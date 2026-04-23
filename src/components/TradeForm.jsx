@@ -6,6 +6,7 @@ export default function TradeForm({ addTrade }) {
     type: "Buy",
     entry: "",
     exit: "",
+    lot: "",
     note: "",
     emotion: "",
     lesson: "",
@@ -15,21 +16,23 @@ export default function TradeForm({ addTrade }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    let profit;
+    let profit = 0;
 
     if (trade.type === "Buy") {
-      profit = trade.exit - trade.entry;
+      profit = (trade.exit - trade.entry) * trade.lot;
     } else {
-      profit = trade.entry - trade.exit;
+      profit = (trade.entry - trade.exit) * trade.lot;
     }
 
     addTrade({ ...trade, profit });
 
+    // Reset form
     setTrade({
       asset: "",
       type: "Buy",
       entry: "",
       exit: "",
+      lot: "",
       note: "",
       emotion: "",
       lesson: "",
@@ -48,7 +51,7 @@ export default function TradeForm({ addTrade }) {
         onChange={(e) => setTrade({ ...trade, asset: e.target.value })}
       />
 
-      {/* ✅ BUY / SELL DROPDOWN */}
+      {/* Buy / Sell */}
       <select
         className="block mb-2 p-2 text-black w-full"
         value={trade.type}
@@ -64,7 +67,9 @@ export default function TradeForm({ addTrade }) {
         placeholder="Entry Price"
         className="block mb-2 p-2 text-black w-full"
         value={trade.entry}
-        onChange={(e) => setTrade({ ...trade, entry: +e.target.value })}
+        onChange={(e) =>
+          setTrade({ ...trade, entry: Number(e.target.value) })
+        }
       />
 
       {/* Exit */}
@@ -73,7 +78,20 @@ export default function TradeForm({ addTrade }) {
         placeholder="Exit Price"
         className="block mb-2 p-2 text-black w-full"
         value={trade.exit}
-        onChange={(e) => setTrade({ ...trade, exit: +e.target.value })}
+        onChange={(e) =>
+          setTrade({ ...trade, exit: Number(e.target.value) })
+        }
+      />
+
+      {/* Lot Size */}
+      <input
+        type="number"
+        placeholder="Lot Size (e.g. 1)"
+        className="block mb-2 p-2 text-black w-full"
+        value={trade.lot}
+        onChange={(e) =>
+          setTrade({ ...trade, lot: Number(e.target.value) })
+        }
       />
 
       {/* Note */}
@@ -102,7 +120,7 @@ export default function TradeForm({ addTrade }) {
 
       {/* Tag */}
       <input
-        placeholder="Tag"
+        placeholder="Tag (e.g. scalp, breakout)"
         className="block mb-2 p-2 text-black w-full"
         value={trade.tag}
         onChange={(e) => setTrade({ ...trade, tag: e.target.value })}
@@ -111,7 +129,6 @@ export default function TradeForm({ addTrade }) {
       <button className="bg-white text-black px-4 py-2 mt-2 w-full">
         Add Trade
       </button>
-
     </form>
   );
 }
