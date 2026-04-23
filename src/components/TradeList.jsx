@@ -6,6 +6,10 @@ export default function TradeList({ trades }) {
 
           <p className="font-semibold text-lg">{trade.asset}</p>
 
+          <p className={trade.type === "Buy" ? "text-green-400" : "text-red-400"}>
+  {trade.type}
+</p>
+
           <p>Entry: {trade.entry} | Exit: {trade.exit}</p>
 
           <p className={trade.profit >= 0 ? "text-green-400" : "text-red-400"}>
