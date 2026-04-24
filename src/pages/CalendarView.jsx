@@ -19,15 +19,22 @@ export default function CalendarView() {
     fetchTrades();
   }, []);
 
+  // 📅 Selected date
   const formattedDate = selectedDate.toISOString().split("T")[0];
 
-  const tradesForDay = trades.filter(t => t.date === formattedDate);
+  // 🔥 ONLY REAL TRADES (no withdrawals)
+  const tradesForDay = trades.filter(
+    t => t.date === formattedDate && t.kind !== "withdrawal"
+  );
 
-  // 📊 Daily Stats
+  // 📊 DAILY STATS (ONLY TRADES)
   const totalProfit = tradesForDay.reduce((sum, t) => sum + t.profit, 0);
   const totalTrades = tradesForDay.length;
+
   const wins = tradesForDay.filter(t => t.profit > 0).length;
-  const winRate = totalTrades ? ((wins / totalTrades) * 100).toFixed(1) : 0;
+  const winRate = totalTrades
+    ? ((wins / totalTrades) * 100).toFixed(1)
+    : 0;
 
   const avgRR = totalTrades
     ? (
@@ -36,18 +43,22 @@ export default function CalendarView() {
       ).toFixed(2)
     : 0;
 
-  // 🧠 Profit per day (for coloring)
+  // 🧠 CALENDAR COLOR LOGIC (FIXED)
   const getDayProfit = (date) => {
     const day = date.toISOString().split("T")[0];
-    const tradesForDay = trades.filter(t => t.date === day);
-    return tradesForDay.reduce((sum, t) => sum + t.profit, 0);
+
+    const tradesOnly = trades.filter(
+      t => t.date === day && t.kind !== "withdrawal"
+    );
+
+    return tradesOnly.reduce((sum, t) => sum + t.profit, 0);
   };
 
   return (
     <div>
       <h1 className="text-3xl mb-6">Calendar</h1>
 
-      {/* 📅 Calendar */}
+      {/* 📅 CALENDAR */}
       <Calendar
         onChange={setSelectedDate}
         value={selectedDate}
@@ -92,7 +103,7 @@ export default function CalendarView() {
 
         </div>
 
-        {/* 📋 Trades */}
+        {/* 📋 TRADES ONLY */}
         {tradesForDay.length === 0 && (
           <p className="text-gray-400">No trades this day</p>
         )}
