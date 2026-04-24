@@ -1,36 +1,29 @@
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-
 import Dashboard from "./pages/Dashboard";
 import Journal from "./pages/Journal";
 import Insights from "./pages/Insights";
-import Settings from "./pages/Settings";
+import CalendarView from "./pages/CalendarView";
 
 export default function App() {
   return (
     <Router>
-      <div className="flex h-screen bg-black text-white">
+      <div className="min-h-screen bg-black text-white p-4">
 
-        {/* Sidebar */}
-        <div className="w-64 bg-gray-900 p-5">
-          <h1 className="text-2xl font-bold mb-8">Vyron Journal</h1>
+        {/* Navigation */}
+        <nav className="flex gap-4 mb-6">
+          <Link to="/">Dashboard</Link>
+          <Link to="/journal">Journal</Link>
+          <Link to="/insights">Insights</Link>
+          <Link to="/calendar">Calendar</Link>
+        </nav>
 
-          <nav className="space-y-4">
-            <Link to="/" className="block hover:text-gray-400">Dashboard</Link>
-            <Link to="/journal" className="block hover:text-gray-400">Journal</Link>
-            <Link to="/insights" className="block hover:text-gray-400">Insights</Link>
-            <Link to="/settings" className="block hover:text-gray-400">Settings</Link>
-          </nav>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 p-10">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/journal" element={<Journal />} />
-            <Route path="/insights" element={<Insights />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </div>
+        {/* Routes */}
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/journal" element={<Journal />} />
+          <Route path="/insights" element={<Insights />} />
+          <Route path="/calendar" element={<CalendarView />} />
+        </Routes>
 
       </div>
     </Router>
