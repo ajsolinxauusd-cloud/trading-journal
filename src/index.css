@@ -6,3 +6,35 @@ body {
   background: black;
   color: white;
 }
+/* Full calendar dark theme */
+.react-calendar {
+  background: black;
+  border: none;
+  color: white;
+  width: 100%;
+}
+
+/* Day numbers */
+.react-calendar__tile {
+  color: white;
+}
+
+/* Active selected day */
+.react-calendar__tile--active {
+  background: #333 !important;
+  color: white !important;
+}
+
+/* Winning days */
+.profit-day {
+  background: #16a34a !important; /* green */
+  color: black !important;
+  border-radius: 6px;
+}
+
+/* Losing days */
+.loss-day {
+  background: #dc2626 !important; /* red */
+  color: white !important;
+  border-radius: 6px;
+}
