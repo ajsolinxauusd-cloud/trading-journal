@@ -2,6 +2,7 @@ import { useState } from "react";
 
 export default function TradeForm({ addTrade }) {
   const [trade, setTrade] = useState({
+    kind: "trade",
     date: new Date().toISOString().split("T")[0],
     asset: "",
     type: "Buy",
@@ -9,6 +10,7 @@ export default function TradeForm({ addTrade }) {
     exit: "",
     lot: "",
     stopLoss: "",
+    amount: "",
     note: "",
     emotion: "",
     lesson: "",
@@ -18,6 +20,23 @@ export default function TradeForm({ addTrade }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // 🔻 WITHDRAWAL
+    if (trade.kind === "withdrawal") {
+      addTrade({
+        ...trade,
+        profit: -Math.abs(trade.amount),
+        type: "Withdrawal",
+      });
+
+      setTrade({
+        ...trade,
+        amount: "",
+      });
+
+      return;
+    }
+
+    // 📈 NORMAL TRADE
     let profit = 0;
 
     if (trade.type === "Buy") {
@@ -32,7 +51,9 @@ export default function TradeForm({ addTrade }) {
 
     addTrade({ ...trade, profit, risk, rr });
 
+    // Reset
     setTrade({
+      kind: "trade",
       date: new Date().toISOString().split("T")[0],
       asset: "",
       type: "Buy",
@@ -40,6 +61,7 @@ export default function TradeForm({ addTrade }) {
       exit: "",
       lot: "",
       stopLoss: "",
+      amount: "",
       note: "",
       emotion: "",
       lesson: "",
@@ -50,6 +72,19 @@ export default function TradeForm({ addTrade }) {
   return (
     <form onSubmit={handleSubmit} className="bg-gray-800 p-4 rounded-xl mb-6">
 
+      {/* Type Selector */}
+      <select
+        className="block mb-2 p-2 text-black w-full"
+        value={trade.kind}
+        onChange={(e) =>
+          setTrade({ ...trade, kind: e.target.value })
+        }
+      >
+        <option value="trade">Trade</option>
+        <option value="withdrawal">Withdrawal</option>
+      </select>
+
+      {/* Date */}
       <input
         type="date"
         className="block mb-2 p-2 text-black w-full"
@@ -59,104 +94,86 @@ export default function TradeForm({ addTrade }) {
         }
       />
 
-      <input
-        placeholder="Asset (BTC/USD)"
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.asset}
-        onChange={(e) =>
-          setTrade({ ...trade, asset: e.target.value })
-        }
-      />
+      {/* 🔻 Withdrawal Mode */}
+      {trade.kind === "withdrawal" && (
+        <input
+          type="number"
+          placeholder="Withdrawal Amount"
+          className="block mb-2 p-2 text-black w-full"
+          value={trade.amount}
+          onChange={(e) =>
+            setTrade({ ...trade, amount: Number(e.target.value) })
+          }
+        />
+      )}
 
-      <select
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.type}
-        onChange={(e) =>
-          setTrade({ ...trade, type: e.target.value })
-        }
-      >
-        <option value="Buy">Buy</option>
-        <option value="Sell">Sell</option>
-      </select>
+      {/* 📈 Trade Mode */}
+      {trade.kind === "trade" && (
+        <>
+          <input
+            placeholder="Asset"
+            className="block mb-2 p-2 text-black w-full"
+            value={trade.asset}
+            onChange={(e) =>
+              setTrade({ ...trade, asset: e.target.value })
+            }
+          />
 
-      <input
-        type="number"
-        placeholder="Entry Price"
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.entry}
-        onChange={(e) =>
-          setTrade({ ...trade, entry: Number(e.target.value) })
-        }
-      />
+          <select
+            className="block mb-2 p-2 text-black w-full"
+            value={trade.type}
+            onChange={(e) =>
+              setTrade({ ...trade, type: e.target.value })
+            }
+          >
+            <option value="Buy">Buy</option>
+            <option value="Sell">Sell</option>
+          </select>
 
-      <input
-        type="number"
-        placeholder="Exit Price"
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.exit}
-        onChange={(e) =>
-          setTrade({ ...trade, exit: Number(e.target.value) })
-        }
-      />
+          <input
+            type="number"
+            placeholder="Entry"
+            className="block mb-2 p-2 text-black w-full"
+            value={trade.entry}
+            onChange={(e) =>
+              setTrade({ ...trade, entry: Number(e.target.value) })
+            }
+          />
 
-      <input
-        type="number"
-        placeholder="Lot Size"
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.lot}
-        onChange={(e) =>
-          setTrade({ ...trade, lot: Number(e.target.value) })
-        }
-      />
+          <input
+            type="number"
+            placeholder="Exit"
+            className="block mb-2 p-2 text-black w-full"
+            value={trade.exit}
+            onChange={(e) =>
+              setTrade({ ...trade, exit: Number(e.target.value) })
+            }
+          />
 
-      <input
-        type="number"
-        placeholder="Stop Loss"
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.stopLoss}
-        onChange={(e) =>
-          setTrade({ ...trade, stopLoss: Number(e.target.value) })
-        }
-      />
+          <input
+            type="number"
+            placeholder="Lot Size"
+            className="block mb-2 p-2 text-black w-full"
+            value={trade.lot}
+            onChange={(e) =>
+              setTrade({ ...trade, lot: Number(e.target.value) })
+            }
+          />
 
-      <textarea
-        placeholder="What happened in the trade?"
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.note}
-        onChange={(e) =>
-          setTrade({ ...trade, note: e.target.value })
-        }
-      />
-
-      <input
-        placeholder="Emotion"
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.emotion}
-        onChange={(e) =>
-          setTrade({ ...trade, emotion: e.target.value })
-        }
-      />
-
-      <textarea
-        placeholder="Lesson learned"
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.lesson}
-        onChange={(e) =>
-          setTrade({ ...trade, lesson: e.target.value })
-        }
-      />
-
-      <input
-        placeholder="Tag"
-        className="block mb-2 p-2 text-black w-full"
-        value={trade.tag}
-        onChange={(e) =>
-          setTrade({ ...trade, tag: e.target.value })
-        }
-      />
+          <input
+            type="number"
+            placeholder="Stop Loss"
+            className="block mb-2 p-2 text-black w-full"
+            value={trade.stopLoss}
+            onChange={(e) =>
+              setTrade({ ...trade, stopLoss: Number(e.target.value) })
+            }
+          />
+        </>
+      )}
 
       <button className="bg-white text-black px-4 py-2 mt-2 w-full">
-        Add Trade
+        Add Entry
       </button>
 
     </form>

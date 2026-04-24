@@ -1,142 +1,123 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
-
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid
-} from "recharts";
+import { collection, getDocs, addDoc } from "firebase/firestore";
 
 export default function Dashboard() {
   const [trades, setTrades] = useState([]);
+  const [amount, setAmount] = useState("");
 
   useEffect(() => {
-    const fetchTrades = async () => {
-      const snapshot = await getDocs(collection(db, "trades"));
-      const data = snapshot.docs.map(doc => doc.data());
-      setTrades(data);
-    };
-
     fetchTrades();
   }, []);
 
-  // 📊 CALCULATIONS
-  const totalTrades = trades.length;
-  const wins = trades.filter(t => t.profit > 0).length;
-  const winRate = totalTrades ? ((wins / totalTrades) * 100).toFixed(1) : 0;
-  const netProfit = trades.reduce((sum, t) => sum + t.profit, 0);
+  const fetchTrades = async () => {
+    const snapshot = await getDocs(collection(db, "trades"));
+    const data = snapshot.docs.map(doc => doc.data());
+    setTrades(data);
+  };
 
-   // ✅  EXPORT FUNCTION
-  const exportCSV = () => {
-  if (trades.length === 0) return;
+  // 🔥 FILTER REAL TRADES ONLY
+  const onlyTrades = trades.filter(t => t.kind !== "withdrawal");
 
-  const headers = Object.keys(trades[0]).join(",");
+  // 📊 PERFORMANCE
+  const totalTrades = onlyTrades.length;
 
-  const rows = trades.map(trade =>
-    Object.values(trade).join(",")
-  );
+  const totalProfit = onlyTrades.reduce((sum, t) => sum + t.profit, 0);
 
-  const csvContent = [headers, ...rows].join("\n");
+  const wins = onlyTrades.filter(t => t.profit > 0).length;
 
-  const blob = new Blob([csvContent], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
+  const winRate = totalTrades
+    ? ((wins / totalTrades) * 100).toFixed(1)
+    : 0;
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "trades.csv";
-  a.click();
-};
-  // 📈 EQUITY CURVE
-  let runningBalance = 0;
-  const chartData = trades.map((t, i) => {
-    runningBalance += t.profit;
-    return {
-      name: `Trade ${i + 1}`,
-      balance: runningBalance,
-    };
-  });
+  const avgRR = totalTrades
+    ? (
+        onlyTrades.reduce((sum, t) => sum + Number(t.rr || 0), 0) /
+        totalTrades
+      ).toFixed(2)
+    : 0;
+
+  // 💰 EQUITY (includes withdrawals)
+  const equity = trades.reduce((sum, t) => sum + t.profit, 0);
+
+  // 🔻 HANDLE WITHDRAWAL
+  const handleWithdraw = async () => {
+    if (!amount) return;
+
+    await addDoc(collection(db, "trades"), {
+      kind: "withdrawal",
+      amount: Number(amount),
+      profit: -Math.abs(amount),
+      date: new Date().toISOString().split("T")[0],
+      type: "Withdrawal",
+    });
+
+    setAmount("");
+    fetchTrades(); // refresh
+  };
 
   return (
     <div>
-      <button
-  onClick={exportCSV}
-  className="mb-6 bg-white text-black px-4 py-2 rounded"
->
-  Export Trades (CSV)
-</button>
+
       <h1 className="text-3xl mb-6">Dashboard</h1>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-6 mb-10">
-        <div className="bg-gray-800 p-6 rounded-xl">
-          <p>Total Trades</p>
-          <h3 className="text-2xl mt-2">{totalTrades}</h3>
+      {/* 📊 STATS */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+
+        <div>
+          <p className="text-gray-400">Total Trades</p>
+          <p>{totalTrades}</p>
         </div>
 
-        <div className="bg-gray-800 p-6 rounded-xl">
-          <p>Win Rate</p>
-          <h3 className="text-2xl mt-2">{winRate}%</h3>
+        <div>
+          <p className="text-gray-400">Win Rate</p>
+          <p>{winRate}%</p>
         </div>
 
-        <div className="bg-gray-800 p-6 rounded-xl">
-          <p>Net Profit</p>
-          <h3 className="text-2xl mt-2">${netProfit}</h3>
+        <div>
+          <p className="text-gray-400">Net Profit</p>
+          <p className={totalProfit >= 0 ? "text-green-400" : "text-red-400"}>
+            {totalProfit}
+          </p>
         </div>
+
+        <div>
+          <p className="text-gray-400">Avg R:R</p>
+          <p>{avgRR}</p>
+        </div>
+
       </div>
 
-      {/* Equity Chart */}
-      <div className="bg-gray-900 p-6 rounded-xl">
-        <h2 className="mb-4">Equity Curve</h2>
-
-        <LineChart width={600} height={300} data={chartData}>
-          <CartesianGrid stroke="#444" />
-          <XAxis dataKey="name" stroke="#aaa" />
-          <YAxis stroke="#aaa" />
-          <Tooltip />
-          <Line type="monotone" dataKey="balance" stroke="#4ade80" />
-        </LineChart>
+      {/* 💰 EQUITY */}
+      <div className="bg-gray-900 p-4 rounded-xl mb-6">
+        <p className="text-gray-400">Account Equity</p>
+        <p className={equity >= 0 ? "text-green-400" : "text-red-400"}>
+          {equity}
+        </p>
       </div>
-      <div className="mt-10">
-  <h2 className="text-2xl mb-4">Strategy Performance</h2>
 
-  {Object.entries(
-    trades.reduce((acc, trade) => {
-      const tag = trade.tag || "untagged";
+      {/* 🔻 WITHDRAWAL PANEL */}
+      <div className="bg-gray-900 p-4 rounded-xl">
 
-      if (!acc[tag]) {
-        acc[tag] = {
-          total: 0,
-          wins: 0,
-          profit: 0,
-        };
-      }
+        <h2 className="mb-4">Withdraw Funds</h2>
 
-      acc[tag].total += 1;
-      acc[tag].profit += trade.profit;
+        <input
+          type="number"
+          placeholder="Enter amount"
+          className="p-2 text-black w-full mb-2"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
 
-      if (trade.profit > 0) {
-        acc[tag].wins += 1;
-      }
+        <button
+          onClick={handleWithdraw}
+          className="bg-red-600 px-4 py-2 w-full"
+        >
+          Withdraw
+        </button>
 
-      return acc;
-    }, {})
-  ).map(([tag, data]) => {
-    const winRate = ((data.wins / data.total) * 100).toFixed(1);
-
-    return (
-      <div key={tag} className="bg-gray-800 p-4 mb-4 rounded-xl">
-        <p className="text-lg font-semibold">{tag}</p>
-        <p>Total Trades: {data.total}</p>
-        <p>Win Rate: {winRate}%</p>
-        <p>Net Profit: ${data.profit}</p>
       </div>
-    );
-  })}
-</div>
+
     </div>
   );
 }
