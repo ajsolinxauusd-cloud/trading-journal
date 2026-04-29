@@ -11,6 +11,7 @@ export default function TradeForm({ addTrade }) {
     lot: "",
     stopLoss: "",
     amount: "",
+    screenshot: "", // ✅ NEW
     note: "",
     emotion: "",
     lesson: "",
@@ -20,7 +21,7 @@ export default function TradeForm({ addTrade }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // 🔻 WITHDRAWAL
+    // 🔻 Withdrawal
     if (trade.kind === "withdrawal") {
       addTrade({
         ...trade,
@@ -36,7 +37,7 @@ export default function TradeForm({ addTrade }) {
       return;
     }
 
-    // 📈 NORMAL TRADE
+    // 📈 Trade
     let profit = 0;
 
     if (trade.type === "Buy") {
@@ -51,7 +52,7 @@ export default function TradeForm({ addTrade }) {
 
     addTrade({ ...trade, profit, risk, rr });
 
-    // Reset
+    // Reset form
     setTrade({
       kind: "trade",
       date: new Date().toISOString().split("T")[0],
@@ -62,6 +63,7 @@ export default function TradeForm({ addTrade }) {
       lot: "",
       stopLoss: "",
       amount: "",
+      screenshot: "", // ✅ reset
       note: "",
       emotion: "",
       lesson: "",
@@ -72,7 +74,7 @@ export default function TradeForm({ addTrade }) {
   return (
     <form onSubmit={handleSubmit} className="bg-gray-800 p-4 rounded-xl mb-6">
 
-      {/* Type Selector */}
+      {/* Mode */}
       <select
         className="block mb-2 p-2 text-black w-full"
         value={trade.kind}
@@ -94,7 +96,7 @@ export default function TradeForm({ addTrade }) {
         }
       />
 
-      {/* 🔻 Withdrawal Mode */}
+      {/* 🔻 Withdrawal */}
       {trade.kind === "withdrawal" && (
         <input
           type="number"
@@ -107,7 +109,7 @@ export default function TradeForm({ addTrade }) {
         />
       )}
 
-      {/* 📈 Trade Mode */}
+      {/* 📈 Trade */}
       {trade.kind === "trade" && (
         <>
           <input
@@ -167,6 +169,16 @@ export default function TradeForm({ addTrade }) {
             value={trade.stopLoss}
             onChange={(e) =>
               setTrade({ ...trade, stopLoss: Number(e.target.value) })
+            }
+          />
+
+          {/* 📸 Screenshot Link */}
+          <input
+            placeholder="Screenshot URL (TradingView / Drive)"
+            className="block mb-2 p-2 text-black w-full"
+            value={trade.screenshot}
+            onChange={(e) =>
+              setTrade({ ...trade, screenshot: e.target.value })
             }
           />
         </>

@@ -33,14 +33,32 @@ export default function TradeList({ trades }) {
                 </p>
 
                 <p>Entry: {trade.entry} | Exit: {trade.exit}</p>
-                <p>Lot: {trade.lot}</p>
 
                 <p className={trade.profit >= 0 ? "text-green-400" : "text-red-400"}>
                   Profit: {trade.profit}
                 </p>
 
-                <p>Risk: {trade.risk}</p>
-                <p>R:R: {trade.rr}</p>
+                {/* 📸 Screenshot */}
+                {trade.screenshot && (
+                  <div className="mt-2">
+
+                    <a
+                      href={trade.screenshot}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-400 underline"
+                    >
+                      View Screenshot
+                    </a>
+
+                    <img
+                      src={trade.screenshot}
+                      alt="trade"
+                      className="mt-2 rounded-lg max-h-48"
+                    />
+
+                  </div>
+                )}
 
               </div>
 
