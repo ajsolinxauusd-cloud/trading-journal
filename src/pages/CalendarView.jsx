@@ -5,6 +5,13 @@ import "react-calendar/dist/Calendar.css";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 
+// ✅ FIX: LOCAL DATE FUNCTION
+const getLocalDate = (date) => {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .split("T")[0];
+};
+
 export default function CalendarView() {
   const [trades, setTrades] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -19,15 +26,15 @@ export default function CalendarView() {
     fetchTrades();
   }, []);
 
-  // 📅 Selected date
-  const formattedDate = selectedDate.toISOString().split("T")[0];
+  // ✅ FIXED DATE
+  const formattedDate = getLocalDate(selectedDate);
 
-  // 🔥 ONLY REAL TRADES (no withdrawals)
+  // 🔥 ONLY REAL TRADES
   const tradesForDay = trades.filter(
     t => t.date === formattedDate && t.kind !== "withdrawal"
   );
 
-  // 📊 DAILY STATS (ONLY TRADES)
+  // 📊 STATS
   const totalProfit = tradesForDay.reduce((sum, t) => sum + t.profit, 0);
   const totalTrades = tradesForDay.length;
 
@@ -43,9 +50,9 @@ export default function CalendarView() {
       ).toFixed(2)
     : 0;
 
-  // 🧠 CALENDAR COLOR LOGIC (FIXED)
+  // ✅ FIXED CALENDAR COLOR LOGIC
   const getDayProfit = (date) => {
-    const day = date.toISOString().split("T")[0];
+    const day = getLocalDate(date);
 
     const tradesOnly = trades.filter(
       t => t.date === day && t.kind !== "withdrawal"
@@ -58,7 +65,6 @@ export default function CalendarView() {
     <div>
       <h1 className="text-3xl mb-6">Calendar</h1>
 
-      {/* 📅 CALENDAR */}
       <Calendar
         onChange={setSelectedDate}
         value={selectedDate}
@@ -72,7 +78,7 @@ export default function CalendarView() {
         }}
       />
 
-      {/* 📊 DAILY PERFORMANCE PANEL */}
+      {/* 📊 DAILY PANEL */}
       <div className="mt-6 bg-gray-900 p-4 rounded-xl">
 
         <h2 className="text-xl mb-4">{formattedDate}</h2>
@@ -103,13 +109,13 @@ export default function CalendarView() {
 
         </div>
 
-        {/* 📋 TRADES ONLY */}
+        {/* Trades */}
         {tradesForDay.length === 0 && (
           <p className="text-gray-400">No trades this day</p>
         )}
 
         {tradesForDay.map((trade, index) => (
-          <div key={index} className="bg-gray-800 p-4 mb-3 rounded-xl">
+          <div key={index} className="bg-gray-800 p-4 mb-2 rounded-xl">
 
             <p className="font-semibold">{trade.asset}</p>
 
