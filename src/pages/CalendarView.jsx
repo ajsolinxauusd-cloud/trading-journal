@@ -5,7 +5,7 @@ import "react-calendar/dist/Calendar.css";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 
-// ✅ FIX: LOCAL DATE FUNCTION
+// ✅ Local date fix
 const getLocalDate = (date) => {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
     .toISOString()
@@ -26,15 +26,13 @@ export default function CalendarView() {
     fetchTrades();
   }, []);
 
-  // ✅ FIXED DATE
   const formattedDate = getLocalDate(selectedDate);
 
-  // 🔥 ONLY REAL TRADES
+  // 🔥 Only real trades
   const tradesForDay = trades.filter(
     t => t.date === formattedDate && t.kind !== "withdrawal"
   );
 
-  // 📊 STATS
   const totalProfit = tradesForDay.reduce((sum, t) => sum + t.profit, 0);
   const totalTrades = tradesForDay.length;
 
@@ -43,14 +41,17 @@ export default function CalendarView() {
     ? ((wins / totalTrades) * 100).toFixed(1)
     : 0;
 
-  const avgRR = totalTrades
+  // ✅ FIX: ONLY WINNING TRADES FOR RR
+  const winningTrades = tradesForDay.filter(t => t.profit > 0);
+
+  const avgRR = winningTrades.length
     ? (
-        tradesForDay.reduce((sum, t) => sum + Number(t.rr || 0), 0) /
-        totalTrades
+        winningTrades.reduce((sum, t) => sum + Number(t.rr || 0), 0) /
+        winningTrades.length
       ).toFixed(2)
     : 0;
 
-  // ✅ FIXED CALENDAR COLOR LOGIC
+  // Calendar coloring
   const getDayProfit = (date) => {
     const day = getLocalDate(date);
 
@@ -78,7 +79,6 @@ export default function CalendarView() {
         }}
       />
 
-      {/* 📊 DAILY PANEL */}
       <div className="mt-6 bg-gray-900 p-4 rounded-xl">
 
         <h2 className="text-xl mb-4">{formattedDate}</h2>
@@ -103,13 +103,12 @@ export default function CalendarView() {
           </div>
 
           <div>
-            <p className="text-gray-400">Avg R:R</p>
+            <p className="text-gray-400">Avg R:R (Wins)</p>
             <p>{avgRR}</p>
           </div>
 
         </div>
 
-        {/* Trades */}
         {tradesForDay.length === 0 && (
           <p className="text-gray-400">No trades this day</p>
         )}
