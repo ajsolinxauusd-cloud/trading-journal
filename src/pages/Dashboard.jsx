@@ -16,10 +16,13 @@ export default function Dashboard() {
     setTrades(data);
   };
 
-  // 🔥 FILTER REAL TRADES ONLY
+  // 🔥 FILTER REAL TRADES ONLY (NO WITHDRAWALS)
   const onlyTrades = trades.filter(t => t.kind !== "withdrawal");
 
-  // 📊 PERFORMANCE
+  // 🔥 WINNING TRADES ONLY (FOR RR)
+  const winningTrades = onlyTrades.filter(t => t.profit > 0);
+
+  // 📊 STATS
   const totalTrades = onlyTrades.length;
 
   const totalProfit = onlyTrades.reduce((sum, t) => sum + t.profit, 0);
@@ -30,17 +33,20 @@ export default function Dashboard() {
     ? ((wins / totalTrades) * 100).toFixed(1)
     : 0;
 
-  const avgRR = totalTrades
+  // ✅ FIXED RR (ONLY WINNING TRADES)
+  const avgRR = winningTrades.length
     ? (
-        onlyTrades.reduce((sum, t) => sum + Number(t.rr || 0), 0) /
-        totalTrades
+        winningTrades.reduce(
+          (sum, t) => sum + Number(t.rr || 0),
+          0
+        ) / winningTrades.length
       ).toFixed(2)
     : 0;
 
-  // 💰 EQUITY (includes withdrawals)
+  // 💰 EQUITY (INCLUDES WITHDRAWALS)
   const equity = trades.reduce((sum, t) => sum + t.profit, 0);
 
-  // 🔻 HANDLE WITHDRAWAL
+  // 🔻 WITHDRAWAL FUNCTION
   const handleWithdraw = async () => {
     if (!amount) return;
 
@@ -53,7 +59,7 @@ export default function Dashboard() {
     });
 
     setAmount("");
-    fetchTrades(); // refresh
+    fetchTrades();
   };
 
   return (
@@ -82,7 +88,7 @@ export default function Dashboard() {
         </div>
 
         <div>
-          <p className="text-gray-400">Avg R:R</p>
+          <p className="text-gray-400">Avg R:R (Wins Only)</p>
           <p>{avgRR}</p>
         </div>
 
