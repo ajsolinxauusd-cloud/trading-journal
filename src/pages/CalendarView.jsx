@@ -18,8 +18,9 @@ export default function CalendarView() {
     setTrades(data);
   };
 
+  // ✅ FIX: USE LOCAL DEVICE DATE (NO UTC)
   const formatDate = (date) => {
-    return date.toISOString().split("T")[0];
+    return date.toLocaleDateString("en-CA"); // YYYY-MM-DD (LOCAL TIME)
   };
 
   const selected = formatDate(selectedDate);
