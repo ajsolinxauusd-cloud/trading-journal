@@ -38,3 +38,16 @@ body {
   color: white !important;
   border-radius: 6px;
 }
+/* ✅ FORCE CALENDAR COLORS */
+
+.profit-day {
+  background: #16a34a !important;
+  color: white !important;
+  border-radius: 8px;
+}
+
+.loss-day {
+  background: #dc2626 !important;
+  color: white !important;
+  border-radius: 8px;
+}

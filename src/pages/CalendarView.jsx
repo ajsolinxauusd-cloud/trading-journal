@@ -24,7 +24,7 @@ export default function CalendarView() {
 
   const selected = formatDate(selectedDate);
 
-  // 🔥 TRADES FOR SELECTED DAY (ONLY REAL TRADES)
+  // 🔥 ONLY REAL TRADES FOR THE DAY
   const tradesForDay = trades.filter(
     t => t.date === selected && t.kind !== "withdrawal"
   );
@@ -39,7 +39,7 @@ export default function CalendarView() {
     ? ((wins / totalTrades) * 100).toFixed(1)
     : 0;
 
-  // ✅ RR ONLY FROM WINNING TRADES
+  // ✅ RR (WINS ONLY)
   const winningTrades = tradesForDay.filter(t => t.profit > 0);
 
   const avgRR = winningTrades.length
@@ -51,9 +51,9 @@ export default function CalendarView() {
       ).toFixed(2)
     : 0;
 
-  // 🎨 COLOR DAYS (PROFIT ONLY — IGNORE WITHDRAWALS)
+  // 🎨 COLOR DAYS (FIXED)
   const tileClassName = ({ date, view }) => {
-    if (view !== "month") return;
+    if (view !== "month") return "";
 
     const d = formatDate(date);
 
@@ -61,12 +61,14 @@ export default function CalendarView() {
       t => t.date === d && t.kind !== "withdrawal"
     );
 
-    if (!dayTrades.length) return;
+    if (!dayTrades.length) return "";
 
     const profit = dayTrades.reduce((sum, t) => sum + t.profit, 0);
 
-    if (profit > 0) return "bg-green-600 text-white rounded";
-    if (profit < 0) return "bg-red-600 text-white rounded";
+    if (profit > 0) return "profit-day";
+    if (profit < 0) return "loss-day";
+
+    return "";
   };
 
   return (
@@ -112,7 +114,7 @@ export default function CalendarView() {
 
         </div>
 
-        {/* 📋 TRADES LIST */}
+        {/* 📋 TRADES */}
         {tradesForDay.map((trade, index) => (
           <div key={index} className="bg-gray-800 p-4 mb-3 rounded-xl">
 
