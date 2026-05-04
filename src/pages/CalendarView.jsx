@@ -1,87 +1,90 @@
 import { useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
-
-// ✅ Local date fix
-const getLocalDate = (date) => {
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .split("T")[0];
-};
 
 export default function CalendarView() {
   const [trades, setTrades] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   useEffect(() => {
-    const fetchTrades = async () => {
-      const snapshot = await getDocs(collection(db, "trades"));
-      const data = snapshot.docs.map(doc => doc.data());
-      setTrades(data);
-    };
-
     fetchTrades();
   }, []);
 
-  const formattedDate = getLocalDate(selectedDate);
+  const fetchTrades = async () => {
+    const snapshot = await getDocs(collection(db, "trades"));
+    const data = snapshot.docs.map(doc => doc.data());
+    setTrades(data);
+  };
 
-  // 🔥 Only real trades
+  const formatDate = (date) => {
+    return date.toISOString().split("T")[0];
+  };
+
+  const selected = formatDate(selectedDate);
+
+  // 🔥 TRADES FOR SELECTED DAY (ONLY REAL TRADES)
   const tradesForDay = trades.filter(
-    t => t.date === formattedDate && t.kind !== "withdrawal"
+    t => t.date === selected && t.kind !== "withdrawal"
   );
 
+  // 📊 STATS
   const totalProfit = tradesForDay.reduce((sum, t) => sum + t.profit, 0);
   const totalTrades = tradesForDay.length;
 
   const wins = tradesForDay.filter(t => t.profit > 0).length;
+
   const winRate = totalTrades
     ? ((wins / totalTrades) * 100).toFixed(1)
     : 0;
 
-  // ✅ FIX: ONLY WINNING TRADES FOR RR
+  // ✅ RR ONLY FROM WINNING TRADES
   const winningTrades = tradesForDay.filter(t => t.profit > 0);
 
   const avgRR = winningTrades.length
     ? (
-        winningTrades.reduce((sum, t) => sum + Number(t.rr || 0), 0) /
-        winningTrades.length
+        winningTrades.reduce(
+          (sum, t) => sum + Number(t.rr || 0),
+          0
+        ) / winningTrades.length
       ).toFixed(2)
     : 0;
 
-  // Calendar coloring
-  const getDayProfit = (date) => {
-    const day = getLocalDate(date);
+  // 🎨 COLOR DAYS (PROFIT ONLY — IGNORE WITHDRAWALS)
+  const tileClassName = ({ date, view }) => {
+    if (view !== "month") return;
 
-    const tradesOnly = trades.filter(
-      t => t.date === day && t.kind !== "withdrawal"
+    const d = formatDate(date);
+
+    const dayTrades = trades.filter(
+      t => t.date === d && t.kind !== "withdrawal"
     );
 
-    return tradesOnly.reduce((sum, t) => sum + t.profit, 0);
+    if (!dayTrades.length) return;
+
+    const profit = dayTrades.reduce((sum, t) => sum + t.profit, 0);
+
+    if (profit > 0) return "bg-green-600 text-white rounded";
+    if (profit < 0) return "bg-red-600 text-white rounded";
   };
 
   return (
     <div>
+
       <h1 className="text-3xl mb-6">Calendar</h1>
 
+      {/* 📅 CALENDAR */}
       <Calendar
         onChange={setSelectedDate}
         value={selectedDate}
-        tileClassName={({ date, view }) => {
-          if (view === "month") {
-            const profit = getDayProfit(date);
-
-            if (profit > 0) return "profit-day";
-            if (profit < 0) return "loss-day";
-          }
-        }}
+        tileClassName={tileClassName}
       />
 
-      <div className="mt-6 bg-gray-900 p-4 rounded-xl">
+      {/* 📊 DAY DETAILS */}
+      <div className="bg-gray-900 p-6 mt-6 rounded-xl">
 
-        <h2 className="text-xl mb-4">{formattedDate}</h2>
+        <h2 className="text-xl mb-4">{selected}</h2>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
 
@@ -109,12 +112,9 @@ export default function CalendarView() {
 
         </div>
 
-        {tradesForDay.length === 0 && (
-          <p className="text-gray-400">No trades this day</p>
-        )}
-
+        {/* 📋 TRADES LIST */}
         {tradesForDay.map((trade, index) => (
-          <div key={index} className="bg-gray-800 p-4 mb-2 rounded-xl">
+          <div key={index} className="bg-gray-800 p-4 mb-3 rounded-xl">
 
             <p className="font-semibold">{trade.asset}</p>
 
@@ -122,16 +122,41 @@ export default function CalendarView() {
               {trade.type}
             </p>
 
-            <p>Entry: {trade.entry} | Exit: {trade.exit}</p>
+            <p>
+              Entry: {trade.entry} | Exit: {trade.exit}
+            </p>
 
             <p className={trade.profit >= 0 ? "text-green-400" : "text-red-400"}>
               Profit: {trade.profit}
             </p>
 
+            {/* 📸 CHART LINK */}
+            {trade.screenshot && (
+              <div className="mt-3">
+
+                <a
+                  href={trade.screenshot}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-400 underline"
+                >
+                  View Chart
+                </a>
+
+                <img
+                  src={trade.screenshot}
+                  alt="chart"
+                  className="mt-2 rounded-lg max-h-48"
+                />
+
+              </div>
+            )}
+
           </div>
         ))}
 
       </div>
+
     </div>
   );
 }
