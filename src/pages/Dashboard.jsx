@@ -1,39 +1,80 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+} from "firebase/firestore";
+
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 export default function Dashboard() {
+
   const [trades, setTrades] = useState([]);
-  const [amount, setAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
   useEffect(() => {
     fetchTrades();
   }, []);
 
+  // ✅ FETCH TRADES
   const fetchTrades = async () => {
-    const snapshot = await getDocs(collection(db, "trades"));
-    const data = snapshot.docs.map(doc => doc.data());
+
+    const snapshot = await getDocs(
+      collection(db, "trades")
+    );
+
+    const data = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
     setTrades(data);
   };
 
-  // 🔥 FILTER REAL TRADES ONLY (NO WITHDRAWALS)
-  const onlyTrades = trades.filter(t => t.kind !== "withdrawal");
+  // ✅ REAL TRADES ONLY
+  const realTrades = trades.filter(
+    t => t.kind !== "withdrawal"
+  );
 
-  // 🔥 WINNING TRADES ONLY (FOR RR)
-  const winningTrades = onlyTrades.filter(t => t.profit > 0);
+  // ✅ TOTAL PROFIT
+  const totalProfit = realTrades.reduce(
+    (sum, t) => sum + Number(t.profit || 0),
+    0
+  );
 
-  // 📊 STATS
-  const totalTrades = onlyTrades.length;
+  // ✅ WIN / LOSS
+  const wins = realTrades.filter(
+    t => t.profit > 0
+  ).length;
 
-  const totalProfit = onlyTrades.reduce((sum, t) => sum + t.profit, 0);
+  const losses = realTrades.filter(
+    t => t.profit < 0
+  ).length;
 
-  const wins = onlyTrades.filter(t => t.profit > 0).length;
-
-  const winRate = totalTrades
-    ? ((wins / totalTrades) * 100).toFixed(1)
+  // ✅ WIN RATE
+  const winRate = realTrades.length
+    ? (
+        (wins / realTrades.length) * 100
+      ).toFixed(1)
     : 0;
 
-  // ✅ FIXED RR (ONLY WINNING TRADES)
+  // ✅ RR (ONLY WINNING TRADES)
+  const winningTrades = realTrades.filter(
+    t => t.profit > 0
+  );
+
   const avgRR = winningTrades.length
     ? (
         winningTrades.reduce(
@@ -43,84 +84,257 @@ export default function Dashboard() {
       ).toFixed(2)
     : 0;
 
-  // 💰 EQUITY (INCLUDES WITHDRAWALS)
-  const equity = trades.reduce((sum, t) => sum + t.profit, 0);
+  // ✅ EQUITY CURVE
+  // WITHDRAWALS INCLUDED
+  const performanceData = trades
+    .sort((a, b) =>
+      new Date(a.date) - new Date(b.date)
+    )
+    .reduce((acc, item, index) => {
 
-  // 🔻 WITHDRAWAL FUNCTION
+      const previous =
+        index === 0
+          ? 0
+          : acc[index - 1].equity;
+
+      let change = 0;
+
+      // ✅ NORMAL TRADE
+      if (item.kind !== "withdrawal") {
+        change = Number(item.profit || 0);
+      }
+
+      // ✅ WITHDRAWAL
+      if (item.kind === "withdrawal") {
+        change = -Number(item.amount || 0);
+      }
+
+      acc.push({
+        date: item.date,
+        equity: previous + change,
+      });
+
+      return acc;
+
+    }, []);
+
+  // ✅ ACCOUNT EQUITY
+  const accountEquity = performanceData.length
+    ? performanceData[
+        performanceData.length - 1
+      ].equity
+    : 0;
+
+  // ✅ WITHDRAW FUNCTION
   const handleWithdraw = async () => {
-    if (!amount) return;
+
+    if (!withdrawAmount) return;
 
     await addDoc(collection(db, "trades"), {
+
       kind: "withdrawal",
-      amount: Number(amount),
-      profit: -Math.abs(amount),
-      date: new Date().toISOString().split("T")[0],
-      type: "Withdrawal",
+
+      amount: Number(withdrawAmount),
+
+      // ✅ LOCAL DEVICE DATE
+      date: new Date().toLocaleDateString("en-CA"),
+
     });
 
-    setAmount("");
+    setWithdrawAmount("");
+
     fetchTrades();
   };
 
   return (
     <div>
 
-      <h1 className="text-3xl mb-6">Dashboard</h1>
+      {/* 🔥 TITLE */}
+      <h1 className="text-3xl mb-6">
+        Dashboard
+      </h1>
 
-      {/* 📊 STATS */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      {/* ================= STATS ================= */}
 
-        <div>
-          <p className="text-gray-400">Total Trades</p>
-          <p>{totalTrades}</p>
-        </div>
+      <div className="grid md:grid-cols-5 gap-4">
 
-        <div>
-          <p className="text-gray-400">Win Rate</p>
-          <p>{winRate}%</p>
-        </div>
+        {/* 💰 TOTAL PROFIT */}
+        <div className="bg-gray-900 p-5 rounded-2xl">
 
-        <div>
-          <p className="text-gray-400">Net Profit</p>
-          <p className={totalProfit >= 0 ? "text-green-400" : "text-red-400"}>
-            {totalProfit}
+          <p className="text-gray-400">
+            Total Profit
           </p>
+
+          <h2 className="text-2xl text-green-400 mt-2">
+            ${totalProfit.toFixed(2)}
+          </h2>
+
         </div>
 
-        <div>
-          <p className="text-gray-400">Avg R:R (Wins Only)</p>
-          <p>{avgRR}</p>
+        {/* 💹 ACCOUNT EQUITY */}
+        <div className="bg-gray-900 p-5 rounded-2xl">
+
+          <p className="text-gray-400">
+            Account Equity
+          </p>
+
+          <h2 className="text-2xl mt-2">
+            ${accountEquity.toFixed(2)}
+          </h2>
+
+        </div>
+
+        {/* 📊 WIN RATE */}
+        <div className="bg-gray-900 p-5 rounded-2xl">
+
+          <p className="text-gray-400">
+            Win Rate
+          </p>
+
+          <h2 className="text-2xl mt-2">
+            {winRate}%
+          </h2>
+
+        </div>
+
+        {/* 🎯 AVG RR */}
+        <div className="bg-gray-900 p-5 rounded-2xl">
+
+          <p className="text-gray-400">
+            Avg R:R (Wins)
+          </p>
+
+          <h2 className="text-2xl mt-2">
+            {avgRR}
+          </h2>
+
+        </div>
+
+        {/* 💸 WITHDRAW */}
+        <div className="bg-gray-900 p-5 rounded-2xl">
+
+          <p className="text-gray-400 mb-2">
+            Withdraw
+          </p>
+
+          <input
+            type="number"
+            placeholder="Amount"
+            value={withdrawAmount}
+            onChange={(e) =>
+              setWithdrawAmount(e.target.value)
+            }
+            className="w-full p-2 rounded bg-black border border-gray-700"
+          />
+
+          <button
+            onClick={handleWithdraw}
+            className="mt-3 w-full bg-red-600 hover:bg-red-700 p-2 rounded"
+          >
+            Withdraw
+          </button>
+
         </div>
 
       </div>
 
-      {/* 💰 EQUITY */}
-      <div className="bg-gray-900 p-4 rounded-xl mb-6">
-        <p className="text-gray-400">Account Equity</p>
-        <p className={equity >= 0 ? "text-green-400" : "text-red-400"}>
-          {equity}
-        </p>
-      </div>
+      {/* ================= CHARTS ================= */}
 
-      {/* 🔻 WITHDRAWAL PANEL */}
-      <div className="bg-gray-900 p-4 rounded-xl">
+      <div className="grid md:grid-cols-2 gap-6 mt-8">
 
-        <h2 className="mb-4">Withdraw Funds</h2>
+        {/* 📊 PIE CHART */}
+        <div className="bg-gray-900 p-6 rounded-2xl">
 
-        <input
-          type="number"
-          placeholder="Enter amount"
-          className="p-2 text-black w-full mb-2"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
+          <h2 className="text-xl mb-4">
+            Win vs Loss
+          </h2>
 
-        <button
-          onClick={handleWithdraw}
-          className="bg-red-600 px-4 py-2 w-full"
-        >
-          Withdraw
-        </button>
+          <div className="h-72">
+
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
+
+              <PieChart>
+
+                <Pie
+                  data={[
+                    {
+                      name: "Wins",
+                      value: wins,
+                    },
+                    {
+                      name: "Losses",
+                      value: losses,
+                    },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  dataKey="value"
+                  label
+                >
+
+                  <Cell fill="#16a34a" />
+                  <Cell fill="#dc2626" />
+
+                </Pie>
+
+                <Tooltip />
+
+              </PieChart>
+
+            </ResponsiveContainer>
+
+          </div>
+
+        </div>
+
+        {/* 📈 EQUITY CURVE */}
+        <div className="bg-gray-900 p-6 rounded-2xl">
+
+          <h2 className="text-xl mb-4">
+            Equity Curve
+          </h2>
+
+          <div className="h-72">
+
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
+
+              <LineChart data={performanceData}>
+
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#333"
+                />
+
+                <XAxis
+                  dataKey="date"
+                  stroke="#999"
+                />
+
+                <YAxis stroke="#999" />
+
+                <Tooltip />
+
+                <Line
+                  type="monotone"
+                  dataKey="equity"
+                  stroke="#16a34a"
+                  strokeWidth={3}
+                />
+
+              </LineChart>
+
+            </ResponsiveContainer>
+
+          </div>
+
+        </div>
 
       </div>
 
