@@ -93,8 +93,25 @@ export default function Dashboard() {
       ).toFixed(2)
     : 0;
 
-  // ✅ EQUITY CURVE
-  const performanceData = trades
+  // ✅ WEEKLY EQUITY CURVE ONLY
+  const today = new Date();
+
+  const startOfWeek = new Date(today);
+
+  startOfWeek.setDate(
+    today.getDate() - today.getDay()
+  );
+
+  const weeklyTrades = trades.filter(item => {
+
+    const tradeDate = new Date(item.date);
+
+    return tradeDate >= startOfWeek;
+
+  });
+
+  // ✅ WEEKLY EQUITY DATA
+  const performanceData = weeklyTrades
     .sort(
       (a, b) =>
         new Date(a.date) -
@@ -151,16 +168,24 @@ export default function Dashboard() {
   // ✅ WITHDRAW FUNCTION
   const handleWithdraw = async () => {
 
-    if (!withdrawAmount) return;
+    const amount = Number(withdrawAmount);
+
+    if (!amount) return;
+
+    // ✅ MINIMUM EQUITY RULE
+    if (currentEquity - amount < 2.5) {
+      alert(
+        "Equity cannot go below $2.5"
+      );
+      return;
+    }
 
     await addDoc(
       collection(db, "trades"),
       {
         kind: "withdrawal",
 
-        amount: Number(
-          withdrawAmount
-        ),
+        amount,
 
         date: new Date().toLocaleDateString(
           "en-CA"
@@ -176,16 +201,22 @@ export default function Dashboard() {
   // ✅ DEPOSIT FUNCTION
   const handleDeposit = async () => {
 
-    if (!depositAmount) return;
+    const amount = Number(depositAmount);
+
+    // ✅ MINIMUM DEPOSIT
+    if (amount < 2.5) {
+      alert(
+        "Minimum deposit is $2.5"
+      );
+      return;
+    }
 
     await addDoc(
       collection(db, "trades"),
       {
         kind: "deposit",
 
-        amount: Number(
-          depositAmount
-        ),
+        amount,
 
         date: new Date().toLocaleDateString(
           "en-CA"
@@ -201,7 +232,6 @@ export default function Dashboard() {
   return (
     <div>
 
-      {/* 🔥 TITLE */}
       <h1 className="text-3xl mb-6">
         Dashboard
       </h1>
@@ -210,7 +240,6 @@ export default function Dashboard() {
 
       <div className="grid md:grid-cols-4 gap-4">
 
-        {/* 💰 PROFIT */}
         <div className="bg-gray-900 p-5 rounded-2xl">
 
           <p className="text-gray-400">
@@ -223,7 +252,6 @@ export default function Dashboard() {
 
         </div>
 
-        {/* 📊 WIN RATE */}
         <div className="bg-gray-900 p-5 rounded-2xl">
 
           <p className="text-gray-400">
@@ -236,7 +264,6 @@ export default function Dashboard() {
 
         </div>
 
-        {/* 🎯 RR */}
         <div className="bg-gray-900 p-5 rounded-2xl">
 
           <p className="text-gray-400">
@@ -249,7 +276,6 @@ export default function Dashboard() {
 
         </div>
 
-        {/* 💹 EQUITY */}
         <div className="bg-gray-900 p-5 rounded-2xl">
 
           <p className="text-gray-400">
@@ -268,7 +294,7 @@ export default function Dashboard() {
 
       <div className="grid md:grid-cols-2 gap-6 mt-6">
 
-        {/* 💸 WITHDRAW */}
+        {/* WITHDRAW */}
         <div className="bg-gray-900 p-5 rounded-2xl">
 
           <p className="text-gray-400 mb-3">
@@ -296,7 +322,7 @@ export default function Dashboard() {
 
         </div>
 
-        {/* 💰 DEPOSIT */}
+        {/* DEPOSIT */}
         <div className="bg-gray-900 p-5 rounded-2xl">
 
           <p className="text-gray-400 mb-3">
@@ -330,7 +356,7 @@ export default function Dashboard() {
 
       <div className="grid md:grid-cols-2 gap-6 mt-8">
 
-        {/* 📊 PIE CHART */}
+        {/* PIE */}
         <div className="bg-gray-900 p-6 rounded-2xl">
 
           <h2 className="text-xl mb-4">
@@ -380,11 +406,11 @@ export default function Dashboard() {
 
         </div>
 
-        {/* 📈 EQUITY CURVE */}
+        {/* WEEKLY EQUITY CURVE */}
         <div className="bg-gray-900 p-6 rounded-2xl">
 
           <h2 className="text-xl mb-4">
-            Equity Curve
+            Weekly Equity Curve
           </h2>
 
           <div className="h-72">
