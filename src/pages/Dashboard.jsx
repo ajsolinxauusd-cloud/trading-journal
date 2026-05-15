@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase";
+
 import {
   collection,
   getDocs,
@@ -22,7 +23,10 @@ import {
 export default function Dashboard() {
 
   const [trades, setTrades] = useState([]);
+
   const [withdrawAmount, setWithdrawAmount] = useState("");
+
+  const [depositAmount, setDepositAmount] = useState("");
 
   useEffect(() => {
     fetchTrades();
@@ -45,16 +49,19 @@ export default function Dashboard() {
 
   // ✅ REAL TRADES ONLY
   const realTrades = trades.filter(
-    t => t.kind !== "withdrawal"
+    t =>
+      t.kind !== "withdrawal" &&
+      t.kind !== "deposit"
   );
 
   // ✅ TOTAL PROFIT
   const totalProfit = realTrades.reduce(
-    (sum, t) => sum + Number(t.profit || 0),
+    (sum, t) =>
+      sum + Number(t.profit || 0),
     0
   );
 
-  // ✅ WIN / LOSS
+  // ✅ WINS / LOSSES
   const wins = realTrades.filter(
     t => t.profit > 0
   ).length;
@@ -66,11 +73,12 @@ export default function Dashboard() {
   // ✅ WIN RATE
   const winRate = realTrades.length
     ? (
-        (wins / realTrades.length) * 100
+        (wins / realTrades.length) *
+        100
       ).toFixed(1)
     : 0;
 
-  // ✅ RR (ONLY WINNING TRADES)
+  // ✅ RR (WINS ONLY)
   const winningTrades = realTrades.filter(
     t => t.profit > 0
   );
@@ -78,17 +86,19 @@ export default function Dashboard() {
   const avgRR = winningTrades.length
     ? (
         winningTrades.reduce(
-          (sum, t) => sum + Number(t.rr || 0),
+          (sum, t) =>
+            sum + Number(t.rr || 0),
           0
         ) / winningTrades.length
       ).toFixed(2)
     : 0;
 
   // ✅ EQUITY CURVE
-  // WITHDRAWALS INCLUDED
   const performanceData = trades
-    .sort((a, b) =>
-      new Date(a.date) - new Date(b.date)
+    .sort(
+      (a, b) =>
+        new Date(a.date) -
+        new Date(b.date)
     )
     .reduce((acc, item, index) => {
 
@@ -99,14 +109,26 @@ export default function Dashboard() {
 
       let change = 0;
 
-      // ✅ NORMAL TRADE
-      if (item.kind !== "withdrawal") {
-        change = Number(item.profit || 0);
+      // ✅ TRADE
+      if (
+        item.kind !== "withdrawal" &&
+        item.kind !== "deposit"
+      ) {
+        change = Number(
+          item.profit || 0
+        );
       }
 
       // ✅ WITHDRAWAL
       if (item.kind === "withdrawal") {
-        change = -Number(item.amount || 0);
+        change =
+          -Number(item.amount || 0);
+      }
+
+      // ✅ DEPOSIT
+      if (item.kind === "deposit") {
+        change =
+          Number(item.amount || 0);
       }
 
       acc.push({
@@ -118,30 +140,60 @@ export default function Dashboard() {
 
     }, []);
 
-  // ✅ ACCOUNT EQUITY
-  const accountEquity = performanceData.length
-    ? performanceData[
-        performanceData.length - 1
-      ].equity
-    : 0;
+  // ✅ CURRENT EQUITY
+  const currentEquity =
+    performanceData.length > 0
+      ? performanceData[
+          performanceData.length - 1
+        ].equity
+      : 0;
 
   // ✅ WITHDRAW FUNCTION
   const handleWithdraw = async () => {
 
     if (!withdrawAmount) return;
 
-    await addDoc(collection(db, "trades"), {
+    await addDoc(
+      collection(db, "trades"),
+      {
+        kind: "withdrawal",
 
-      kind: "withdrawal",
+        amount: Number(
+          withdrawAmount
+        ),
 
-      amount: Number(withdrawAmount),
-
-      // ✅ LOCAL DEVICE DATE
-      date: new Date().toLocaleDateString("en-CA"),
-
-    });
+        date: new Date().toLocaleDateString(
+          "en-CA"
+        ),
+      }
+    );
 
     setWithdrawAmount("");
+
+    fetchTrades();
+  };
+
+  // ✅ DEPOSIT FUNCTION
+  const handleDeposit = async () => {
+
+    if (!depositAmount) return;
+
+    await addDoc(
+      collection(db, "trades"),
+      {
+        kind: "deposit",
+
+        amount: Number(
+          depositAmount
+        ),
+
+        date: new Date().toLocaleDateString(
+          "en-CA"
+        ),
+      }
+    );
+
+    setDepositAmount("");
 
     fetchTrades();
   };
@@ -156,9 +208,9 @@ export default function Dashboard() {
 
       {/* ================= STATS ================= */}
 
-      <div className="grid md:grid-cols-5 gap-4">
+      <div className="grid md:grid-cols-4 gap-4">
 
-        {/* 💰 TOTAL PROFIT */}
+        {/* 💰 PROFIT */}
         <div className="bg-gray-900 p-5 rounded-2xl">
 
           <p className="text-gray-400">
@@ -167,19 +219,6 @@ export default function Dashboard() {
 
           <h2 className="text-2xl text-green-400 mt-2">
             ${totalProfit.toFixed(2)}
-          </h2>
-
-        </div>
-
-        {/* 💹 ACCOUNT EQUITY */}
-        <div className="bg-gray-900 p-5 rounded-2xl">
-
-          <p className="text-gray-400">
-            Account Equity
-          </p>
-
-          <h2 className="text-2xl mt-2">
-            ${accountEquity.toFixed(2)}
           </h2>
 
         </div>
@@ -197,7 +236,7 @@ export default function Dashboard() {
 
         </div>
 
-        {/* 🎯 AVG RR */}
+        {/* 🎯 RR */}
         <div className="bg-gray-900 p-5 rounded-2xl">
 
           <p className="text-gray-400">
@@ -210,11 +249,30 @@ export default function Dashboard() {
 
         </div>
 
+        {/* 💹 EQUITY */}
+        <div className="bg-gray-900 p-5 rounded-2xl">
+
+          <p className="text-gray-400">
+            Current Equity
+          </p>
+
+          <h2 className="text-2xl mt-2 text-blue-400">
+            ${currentEquity.toFixed(2)}
+          </h2>
+
+        </div>
+
+      </div>
+
+      {/* ================= DEPOSIT & WITHDRAW ================= */}
+
+      <div className="grid md:grid-cols-2 gap-6 mt-6">
+
         {/* 💸 WITHDRAW */}
         <div className="bg-gray-900 p-5 rounded-2xl">
 
-          <p className="text-gray-400 mb-2">
-            Withdraw
+          <p className="text-gray-400 mb-3">
+            Withdraw Funds
           </p>
 
           <input
@@ -222,16 +280,46 @@ export default function Dashboard() {
             placeholder="Amount"
             value={withdrawAmount}
             onChange={(e) =>
-              setWithdrawAmount(e.target.value)
+              setWithdrawAmount(
+                e.target.value
+              )
             }
             className="w-full p-2 rounded bg-black border border-gray-700"
           />
 
           <button
             onClick={handleWithdraw}
-            className="mt-3 w-full bg-red-600 hover:bg-red-700 p-2 rounded"
+            className="mt-4 w-full bg-red-600 hover:bg-red-700 p-2 rounded"
           >
             Withdraw
+          </button>
+
+        </div>
+
+        {/* 💰 DEPOSIT */}
+        <div className="bg-gray-900 p-5 rounded-2xl">
+
+          <p className="text-gray-400 mb-3">
+            Deposit Funds
+          </p>
+
+          <input
+            type="number"
+            placeholder="Amount"
+            value={depositAmount}
+            onChange={(e) =>
+              setDepositAmount(
+                e.target.value
+              )
+            }
+            className="w-full p-2 rounded bg-black border border-gray-700"
+          />
+
+          <button
+            onClick={handleDeposit}
+            className="mt-4 w-full bg-green-600 hover:bg-green-700 p-2 rounded"
+          >
+            Deposit
           </button>
 
         </div>
@@ -246,7 +334,7 @@ export default function Dashboard() {
         <div className="bg-gray-900 p-6 rounded-2xl">
 
           <h2 className="text-xl mb-4">
-            Win vs Loss
+            Win Rate
           </h2>
 
           <div className="h-72">
@@ -277,6 +365,7 @@ export default function Dashboard() {
                 >
 
                   <Cell fill="#16a34a" />
+
                   <Cell fill="#dc2626" />
 
                 </Pie>
@@ -305,7 +394,9 @@ export default function Dashboard() {
               height="100%"
             >
 
-              <LineChart data={performanceData}>
+              <LineChart
+                data={performanceData}
+              >
 
                 <CartesianGrid
                   strokeDasharray="3 3"
