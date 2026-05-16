@@ -2,19 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================= */
+/* ========================= */
 /* 🌑 GLOBAL */
-/* ============================= */
+/* ========================= */
 
 body {
-  background: black;
+  background: #000000;
   color: white;
   font-family: sans-serif;
 }
 
-/* ============================= */
-/* 📅 CALENDAR DARK MODE */
-/* ============================= */
+/* ========================= */
+/* 📦 MAIN CONTAINERS */
+/* ========================= */
+
+.card {
+  background: #050816;
+  border: 1px solid #1f2937;
+  border-radius: 20px;
+}
+
+/* ========================= */
+/* 📝 INPUTS */
+/* ========================= */
+
+input,
+select,
+textarea {
+  width: 100%;
+
+  background: #050816 !important;
+
+  color: white !important;
+
+  border: 1px solid #1f2937 !important;
+
+  border-radius: 12px;
+
+  padding: 14px;
+
+  transition: 0.2s;
+}
+
+/* PLACEHOLDER */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* FOCUS */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+
+  border-color: #2563eb !important;
+
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+/* TEXTAREA */
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* ========================= */
+/* 🔘 BUTTONS */
+/* ========================= */
+
+button {
+  background: #111827;
+
+  color: white;
+
+  border-radius: 12px;
+
+  transition: 0.2s;
+
+  padding: 12px 18px;
+
+  border: none;
+}
+
+/* HOVER */
+button:hover {
+  background: #1f2937;
+}
+
+/* ========================= */
+/* 📅 CALENDAR */
+/* ========================= */
 
 .react-calendar {
   width: 100%;
@@ -31,10 +109,7 @@ body {
   padding: 15px;
 }
 
-/* ============================= */
 /* NAVIGATION */
-/* ============================= */
-
 .react-calendar__navigation {
   margin-bottom: 15px;
 }
@@ -55,10 +130,7 @@ body {
   background: #111827 !important;
 }
 
-/* ============================= */
-/* WEEKDAY NAMES */
-/* ============================= */
-
+/* WEEKDAYS */
 .react-calendar__month-view__weekdays {
   text-align: center;
 
@@ -75,10 +147,7 @@ body {
   padding: 10px 0;
 }
 
-/* ============================= */
 /* DAY TILES */
-/* ============================= */
-
 .react-calendar__tile {
   background: transparent !important;
 
@@ -103,17 +172,14 @@ body {
   color: white !important;
 }
 
-/* ACTIVE SELECTED DAY */
+/* ACTIVE DAY */
 .react-calendar__tile--active {
   background: #3b82f6 !important;
 
   color: white !important;
 }
 
-/* ============================= */
 /* PROFIT DAYS */
-/* ============================= */
-
 .profit-day {
   background: #16a34a !important;
 
@@ -122,10 +188,7 @@ body {
   font-weight: bold;
 }
 
-/* ============================= */
 /* LOSS DAYS */
-/* ============================= */
-
 .loss-day {
   background: #dc2626 !important;
 
@@ -134,25 +197,19 @@ body {
   font-weight: bold;
 }
 
-/* ============================= */
-/* NEIGHBOR MONTH */
-/* ============================= */
-
+/* OTHER MONTH DAYS */
 .react-calendar__month-view__days__day--neighboringMonth {
   color: #6b7280 !important;
 }
 
-/* ============================= */
-/* REMOVE DEFAULT BLUE */
-/* ============================= */
-
+/* REMOVE DEFAULT BUTTON BORDER */
 .react-calendar button {
   border: none;
 }
 
-/* ============================= */
-/* MOBILE */
-/* ============================= */
+/* ========================= */
+/* 📱 MOBILE */
+/* ========================= */
 
 @media (max-width: 768px) {
 
