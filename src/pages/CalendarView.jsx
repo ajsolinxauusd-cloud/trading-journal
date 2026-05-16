@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+
 import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
+
+import {
+  collection,
+  getDocs,
+} from "firebase/firestore";
 
 export default function CalendarView() {
 
-  const [trades, setTrades] = useState([]);
+  const [trades, setTrades] =
+    useState([]);
 
   const [selectedDate, setSelectedDate] =
     useState(new Date());
@@ -33,14 +39,20 @@ export default function CalendarView() {
     setTrades(data);
   };
 
-  // ✅ LOCAL DEVICE DATE FIX
+  // ✅ LOCAL DEVICE DATE
   const formatDate = (date) => {
-    return date.toLocaleDateString("en-CA");
+    return date.toLocaleDateString(
+      "en-CA"
+    );
   };
 
-  const selected = formatDate(selectedDate);
+  const selected =
+    formatDate(selectedDate);
 
-  // 🔥 ONLY REAL TRADES FOR SELECTED DAY
+  // =============================
+  // ✅ DAY TRADES
+  // =============================
+
   const tradesForDay = trades.filter(
     t =>
       t.date === selected &&
@@ -48,18 +60,25 @@ export default function CalendarView() {
       t.kind !== "deposit"
   );
 
-  // 📊 DAY STATS
-  const totalProfit = tradesForDay.reduce(
-    (sum, t) =>
-      sum + Number(t.profit || 0),
-    0
-  );
+  // =============================
+  // ✅ DAY STATS
+  // =============================
 
-  const totalTrades = tradesForDay.length;
+  const totalProfit =
+    tradesForDay.reduce(
+      (sum, t) =>
+        sum +
+        Number(t.profit || 0),
+      0
+    );
 
-  const wins = tradesForDay.filter(
-    t => t.profit > 0
-  ).length;
+  const totalTrades =
+    tradesForDay.length;
+
+  const wins =
+    tradesForDay.filter(
+      t => t.profit > 0
+    ).length;
 
   const winRate = totalTrades
     ? (
@@ -68,48 +87,105 @@ export default function CalendarView() {
       ).toFixed(1)
     : 0;
 
+  // =============================
   // ✅ RR (WINS ONLY)
-  const winningTrades = tradesForDay.filter(
-    t => t.profit > 0
-  );
+  // =============================
 
-  const avgRR = winningTrades.length
-    ? (
-        winningTrades.reduce(
-          (sum, t) =>
-            sum + Number(t.rr || 0),
-          0
-        ) / winningTrades.length
-      ).toFixed(2)
-    : 0;
+  const winningTrades =
+    tradesForDay.filter(
+      t => t.profit > 0
+    );
 
+  const avgRR =
+    winningTrades.length
+      ? (
+          winningTrades.reduce(
+            (sum, t) =>
+              sum +
+              Number(
+                t.rr || 0
+              ),
+            0
+          ) /
+          winningTrades.length
+        ).toFixed(2)
+      : 0;
+
+  // =============================
   // ✅ MONTH PROFIT
-  const monthProfit = trades
-    .filter(t => {
+  // =============================
 
-      // IGNORE DEPOSITS & WITHDRAWALS
+  const monthTrades = trades.filter(
+    t => {
+
       if (
-        t.kind === "withdrawal" ||
+        t.kind ===
+          "withdrawal" ||
         t.kind === "deposit"
       ) {
         return false;
       }
 
-      const tradeDate = new Date(t.date);
+      const tradeDate =
+        new Date(t.date);
 
       return (
         tradeDate.getMonth() ===
         selectedMonth
       );
 
-    })
-    .reduce(
+    }
+  );
+
+  const monthProfit =
+    monthTrades.reduce(
       (sum, t) =>
-        sum + Number(t.profit || 0),
+        sum +
+        Number(t.profit || 0),
       0
     );
 
+  // =============================
+  // ✅ WEEKLY PROFITS
+  // =============================
+
+  const weeklyProfits = {};
+
+  monthTrades.forEach(trade => {
+
+    const tradeDate =
+      new Date(trade.date);
+
+    // ✅ WEEK NUMBER
+    const firstDay =
+      new Date(
+        tradeDate.getFullYear(),
+        tradeDate.getMonth(),
+        1
+      );
+
+    const week =
+      Math.ceil(
+        (
+          tradeDate.getDate() +
+          firstDay.getDay()
+        ) / 7
+      );
+
+    if (!weeklyProfits[week]) {
+      weeklyProfits[week] = 0;
+    }
+
+    weeklyProfits[week] += Number(
+      trade.profit || 0
+    );
+
+  });
+
+  // =============================
   // 🎨 CALENDAR COLORS
+  // =============================
+
   const tileClassName = ({
     date,
     view,
@@ -120,21 +196,27 @@ export default function CalendarView() {
 
     const d = formatDate(date);
 
-    const dayTrades = trades.filter(
-      t =>
-        t.date === d &&
-        t.kind !== "withdrawal" &&
-        t.kind !== "deposit"
-    );
+    const dayTrades =
+      trades.filter(
+        t =>
+          t.date === d &&
+          t.kind !==
+            "withdrawal" &&
+          t.kind !== "deposit"
+      );
 
     if (!dayTrades.length)
       return "";
 
-    const profit = dayTrades.reduce(
-      (sum, t) =>
-        sum + Number(t.profit || 0),
-      0
-    );
+    const profit =
+      dayTrades.reduce(
+        (sum, t) =>
+          sum +
+          Number(
+            t.profit || 0
+          ),
+        0
+      );
 
     if (profit > 0)
       return "profit-day";
@@ -148,23 +230,26 @@ export default function CalendarView() {
   return (
     <div>
 
-      {/* 🔥 TITLE */}
+      {/* ================= TITLE ================= */}
+
       <h1 className="text-3xl mb-6">
         Calendar
       </h1>
 
-      {/* ================= MONTH SELECTOR ================= */}
+      {/* ================= MONTH SECTION ================= */}
 
-      <div className="mb-6 bg-gray-900 p-4 rounded-xl">
+      <div className="bg-gray-900 p-5 rounded-xl mb-6">
 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
-          {/* 📅 MONTH DROPDOWN */}
+          {/* MONTH SELECTOR */}
           <select
             value={selectedMonth}
             onChange={(e) =>
               setSelectedMonth(
-                Number(e.target.value)
+                Number(
+                  e.target.value
+                )
               )
             }
             className="bg-black border border-gray-700 p-3 rounded-lg"
@@ -220,7 +305,7 @@ export default function CalendarView() {
 
           </select>
 
-          {/* 💰 MONTH PROFIT */}
+          {/* MONTH PROFIT */}
           <div>
 
             <p className="text-gray-400">
@@ -234,10 +319,59 @@ export default function CalendarView() {
                   : "text-red-400"
               }`}
             >
-              ${monthProfit.toFixed(2)}
+              $
+              {monthProfit.toFixed(
+                2
+              )}
             </h2>
 
           </div>
+
+        </div>
+
+      </div>
+
+      {/* ================= WEEKLY PROFITS ================= */}
+
+      <div className="bg-gray-900 p-5 rounded-xl mb-6">
+
+        <h2 className="text-2xl mb-4">
+          Weekly Profits
+        </h2>
+
+        <div className="grid md:grid-cols-2 gap-4">
+
+          {Object.keys(
+            weeklyProfits
+          ).map((week) => (
+
+            <div
+              key={week}
+              className="bg-gray-800 p-4 rounded-xl"
+            >
+
+              <p className="text-gray-400">
+                Week {week}
+              </p>
+
+              <h3
+                className={`text-xl font-bold ${
+                  weeklyProfits[
+                    week
+                  ] >= 0
+                    ? "text-green-400"
+                    : "text-red-400"
+                }`}
+              >
+                $
+                {weeklyProfits[
+                  week
+                ].toFixed(2)}
+              </h3>
+
+            </div>
+
+          ))}
 
         </div>
 
@@ -248,7 +382,9 @@ export default function CalendarView() {
       <Calendar
         onChange={setSelectedDate}
         value={selectedDate}
-        tileClassName={tileClassName}
+        tileClassName={
+          tileClassName
+        }
       />
 
       {/* ================= DAY DETAILS ================= */}
@@ -259,10 +395,9 @@ export default function CalendarView() {
           {selected}
         </h2>
 
-        {/* 📊 STATS */}
+        {/* DAY STATS */}
         <div className="grid grid-cols-2 gap-4 mb-4">
 
-          {/* PROFIT */}
           <div>
 
             <p className="text-gray-400">
@@ -276,34 +411,38 @@ export default function CalendarView() {
                   : "text-red-400"
               }
             >
-              ${totalProfit.toFixed(2)}
+              $
+              {totalProfit.toFixed(
+                2
+              )}
             </p>
 
           </div>
 
-          {/* TRADES */}
           <div>
 
             <p className="text-gray-400">
               Trades
             </p>
 
-            <p>{totalTrades}</p>
+            <p>
+              {totalTrades}
+            </p>
 
           </div>
 
-          {/* WIN RATE */}
           <div>
 
             <p className="text-gray-400">
               Win Rate
             </p>
 
-            <p>{winRate}%</p>
+            <p>
+              {winRate}%
+            </p>
 
           </div>
 
-          {/* RR */}
           <div>
 
             <p className="text-gray-400">
@@ -318,10 +457,12 @@ export default function CalendarView() {
 
         {/* ================= TRADES ================= */}
 
-        {tradesForDay.length === 0 && (
+        {tradesForDay.length ===
+          0 && (
 
           <p className="text-gray-500">
-            No trades for this day.
+            No trades for this
+            day.
           </p>
 
         )}
@@ -334,15 +475,14 @@ export default function CalendarView() {
               className="bg-gray-800 p-4 mb-3 rounded-xl"
             >
 
-              {/* ASSET */}
               <p className="font-semibold">
                 {trade.asset}
               </p>
 
-              {/* BUY / SELL */}
               <p
                 className={
-                  trade.type === "Buy"
+                  trade.type ===
+                  "Buy"
                     ? "text-green-400"
                     : "text-red-400"
                 }
@@ -350,14 +490,14 @@ export default function CalendarView() {
                 {trade.type}
               </p>
 
-              {/* ENTRY EXIT */}
               <p>
-                Entry: {trade.entry}
+                Entry:{" "}
+                {trade.entry}
                 {" | "}
-                Exit: {trade.exit}
+                Exit:{" "}
+                {trade.exit}
               </p>
 
-              {/* PROFIT */}
               <p
                 className={
                   trade.profit >= 0
@@ -367,37 +507,25 @@ export default function CalendarView() {
               >
                 Profit: $
                 {Number(
-                  trade.profit || 0
+                  trade.profit ||
+                    0
                 ).toFixed(2)}
               </p>
 
-              {/* RR */}
               <p>
-                RR: {trade.rr || 0}
+                RR:{" "}
+                {trade.rr || 0}
               </p>
 
-              {/* NOTES */}
-              {trade.lesson && (
-
-                <div className="mt-2">
-
-                  <p className="text-gray-400">
-                    Lesson
-                  </p>
-
-                  <p>{trade.lesson}</p>
-
-                </div>
-
-              )}
-
-              {/* 📸 CHART LINK */}
+              {/* 📸 CHART */}
               {trade.screenshot && (
 
                 <div className="mt-3">
 
                   <a
-                    href={trade.screenshot}
+                    href={
+                      trade.screenshot
+                    }
                     target="_blank"
                     rel="noreferrer"
                     className="text-blue-400 underline"
@@ -406,7 +534,9 @@ export default function CalendarView() {
                   </a>
 
                   <img
-                    src={trade.screenshot}
+                    src={
+                      trade.screenshot
+                    }
                     alt="chart"
                     className="mt-2 rounded-lg max-h-48"
                   />
