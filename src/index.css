@@ -2,52 +2,162 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================= */
+/* 🌑 GLOBAL */
+/* ============================= */
+
 body {
   background: black;
   color: white;
+  font-family: sans-serif;
 }
-/* Full calendar dark theme */
+
+/* ============================= */
+/* 📅 CALENDAR DARK MODE */
+/* ============================= */
+
 .react-calendar {
-  background: black;
-  border: none;
-  color: white;
   width: 100%;
+  max-width: 420px;
+
+  background: #050816 !important;
+
+  border: 1px solid #1f2937 !important;
+
+  color: white !important;
+
+  border-radius: 20px;
+
+  padding: 15px;
 }
 
-/* Day numbers */
+/* ============================= */
+/* NAVIGATION */
+/* ============================= */
+
+.react-calendar__navigation {
+  margin-bottom: 15px;
+}
+
+.react-calendar__navigation button {
+  color: white !important;
+
+  background: transparent !important;
+
+  min-width: 44px;
+
+  font-size: 18px;
+
+  border-radius: 10px;
+}
+
+.react-calendar__navigation button:hover {
+  background: #111827 !important;
+}
+
+/* ============================= */
+/* WEEKDAY NAMES */
+/* ============================= */
+
+.react-calendar__month-view__weekdays {
+  text-align: center;
+
+  text-transform: uppercase;
+
+  font-size: 12px;
+
+  font-weight: bold;
+
+  color: #9ca3af;
+}
+
+.react-calendar__month-view__weekdays__weekday {
+  padding: 10px 0;
+}
+
+/* ============================= */
+/* DAY TILES */
+/* ============================= */
+
 .react-calendar__tile {
-  color: white;
+  background: transparent !important;
+
+  color: white !important;
+
+  border-radius: 12px;
+
+  padding: 12px 6px;
+
+  transition: 0.2s;
 }
 
-/* Active selected day */
+/* HOVER */
+.react-calendar__tile:hover {
+  background: #1f2937 !important;
+}
+
+/* TODAY */
+.react-calendar__tile--now {
+  background: #2563eb !important;
+
+  color: white !important;
+}
+
+/* ACTIVE SELECTED DAY */
 .react-calendar__tile--active {
-  background: #333 !important;
+  background: #3b82f6 !important;
+
   color: white !important;
 }
 
-/* Winning days */
-.profit-day {
-  background: #16a34a !important; /* green */
-  color: black !important;
-  border-radius: 6px;
-}
-
-/* Losing days */
-.loss-day {
-  background: #dc2626 !important; /* red */
-  color: white !important;
-  border-radius: 6px;
-}
-/* ✅ FORCE CALENDAR COLORS */
+/* ============================= */
+/* PROFIT DAYS */
+/* ============================= */
 
 .profit-day {
   background: #16a34a !important;
+
   color: white !important;
-  border-radius: 8px;
+
+  font-weight: bold;
 }
+
+/* ============================= */
+/* LOSS DAYS */
+/* ============================= */
 
 .loss-day {
   background: #dc2626 !important;
+
   color: white !important;
-  border-radius: 8px;
+
+  font-weight: bold;
+}
+
+/* ============================= */
+/* NEIGHBOR MONTH */
+/* ============================= */
+
+.react-calendar__month-view__days__day--neighboringMonth {
+  color: #6b7280 !important;
+}
+
+/* ============================= */
+/* REMOVE DEFAULT BLUE */
+/* ============================= */
+
+.react-calendar button {
+  border: none;
+}
+
+/* ============================= */
+/* MOBILE */
+/* ============================= */
+
+@media (max-width: 768px) {
+
+  .react-calendar {
+    max-width: 100%;
+  }
+
 }
