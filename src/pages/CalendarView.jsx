@@ -17,7 +17,6 @@ export default function CalendarView() {
   const [selectedDate, setSelectedDate] =
     useState(new Date());
 
-  // ✅ MONTH SELECTOR
   const [selectedMonth, setSelectedMonth] =
     useState(new Date().getMonth());
 
@@ -32,43 +31,41 @@ export default function CalendarView() {
       collection(db, "trades")
     );
 
-    const data = snapshot.docs.map(doc =>
-      doc.data()
-    );
+    const data = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
     setTrades(data);
   };
 
   // ✅ LOCAL DEVICE DATE
   const formatDate = (date) => {
-    return date.toLocaleDateString(
-      "en-CA"
-    );
+    return date.toLocaleDateString("en-CA");
   };
 
   const selected =
     formatDate(selectedDate);
 
-  // =============================
+  // =========================
   // ✅ DAY TRADES
-  // =============================
+  // =========================
 
   const tradesForDay = trades.filter(
-    t =>
+    (t) =>
       t.date === selected &&
       t.kind !== "withdrawal" &&
       t.kind !== "deposit"
   );
 
-  // =============================
+  // =========================
   // ✅ DAY STATS
-  // =============================
+  // =========================
 
   const totalProfit =
     tradesForDay.reduce(
       (sum, t) =>
-        sum +
-        Number(t.profit || 0),
+        sum + Number(t.profit || 0),
       0
     );
 
@@ -77,50 +74,43 @@ export default function CalendarView() {
 
   const wins =
     tradesForDay.filter(
-      t => t.profit > 0
+      (t) => Number(t.profit) > 0
     ).length;
 
-  const winRate = totalTrades
-    ? (
-        (wins / totalTrades) *
-        100
-      ).toFixed(1)
-    : 0;
+  const winRate =
+    totalTrades > 0
+      ? (
+          (wins / totalTrades) *
+          100
+        ).toFixed(1)
+      : 0;
 
-  // =============================
-  // ✅ RR (WINS ONLY)
-  // =============================
-
+  // ✅ RR (ONLY WINS)
   const winningTrades =
     tradesForDay.filter(
-      t => t.profit > 0
+      (t) => Number(t.profit) > 0
     );
 
   const avgRR =
-    winningTrades.length
+    winningTrades.length > 0
       ? (
           winningTrades.reduce(
             (sum, t) =>
-              sum +
-              Number(
-                t.rr || 0
-              ),
+              sum + Number(t.rr || 0),
             0
-          ) /
-          winningTrades.length
+          ) / winningTrades.length
         ).toFixed(2)
       : 0;
 
-  // =============================
-  // ✅ MONTH PROFIT
-  // =============================
+  // =========================
+  // ✅ MONTH TRADES
+  // =========================
 
   const monthTrades = trades.filter(
-    t => {
+    (t) => {
 
       if (
-        t.kind ===
-          "withdrawal" ||
+        t.kind === "withdrawal" ||
         t.kind === "deposit"
       ) {
         return false;
@@ -133,96 +123,230 @@ export default function CalendarView() {
         tradeDate.getMonth() ===
         selectedMonth
       );
-
     }
   );
+
+  // =========================
+  // ✅ MONTH PROFIT
+  // =========================
 
   const monthProfit =
     monthTrades.reduce(
       (sum, t) =>
-        sum +
-        Number(t.profit || 0),
+        sum + Number(t.profit || 0),
       0
     );
 
-  // =============================
+  // =========================
+  // ✅ MONTH WITHDRAWALS
+  // =========================
+
+  const monthWithdrawals =
+    trades
+      .filter((t) => {
+
+        if (
+          t.kind !== "withdrawal"
+        ) {
+          return false;
+        }
+
+        const tradeDate =
+          new Date(t.date);
+
+        return (
+          tradeDate.getMonth() ===
+          selectedMonth
+        );
+
+      })
+      .reduce(
+        (sum, t) =>
+          sum + Number(t.amount || 0),
+        0
+      );
+
+  // =========================
+  // ✅ MONTH DEPOSITS
+  // =========================
+
+  const monthDeposits =
+    trades
+      .filter((t) => {
+
+        if (
+          t.kind !== "deposit"
+        ) {
+          return false;
+        }
+
+        const tradeDate =
+          new Date(t.date);
+
+        return (
+          tradeDate.getMonth() ===
+          selectedMonth
+        );
+
+      })
+      .reduce(
+        (sum, t) =>
+          sum + Number(t.amount || 0),
+        0
+      );
+
+  // =========================
   // ✅ WEEKLY PROFITS
-  // =============================
+  // =========================
 
   const weeklyProfits = {};
 
-  monthTrades.forEach(trade => {
+  monthTrades.forEach((trade) => {
 
-    const tradeDate =
-      new Date(trade.date);
-
-    // ✅ WEEK NUMBER
-    const firstDay =
-      new Date(
-        tradeDate.getFullYear(),
-        tradeDate.getMonth(),
-        1
-      );
+    const day =
+      new Date(trade.date).getDate();
 
     const week =
-      Math.ceil(
-        (
-          tradeDate.getDate() +
-          firstDay.getDay()
-        ) / 7
-      );
+      Math.ceil(day / 7);
 
     if (!weeklyProfits[week]) {
       weeklyProfits[week] = 0;
     }
 
-    weeklyProfits[week] += Number(
-      trade.profit || 0
-    );
+    weeklyProfits[week] +=
+      Number(trade.profit || 0);
 
   });
 
-  // =============================
-  // 🎨 CALENDAR COLORS
-  // =============================
+  // =========================
+  // ✅ WEEKLY WITHDRAWALS
+  // =========================
+
+  const weeklyWithdrawals = {};
+
+  trades
+    .filter((t) => {
+
+      if (
+        t.kind !== "withdrawal"
+      ) {
+        return false;
+      }
+
+      const tradeDate =
+        new Date(t.date);
+
+      return (
+        tradeDate.getMonth() ===
+        selectedMonth
+      );
+
+    })
+    .forEach((trade) => {
+
+      const day =
+        new Date(trade.date).getDate();
+
+      const week =
+        Math.ceil(day / 7);
+
+      if (
+        !weeklyWithdrawals[week]
+      ) {
+        weeklyWithdrawals[week] = 0;
+      }
+
+      weeklyWithdrawals[week] +=
+        Number(trade.amount || 0);
+
+    });
+
+  // =========================
+  // ✅ WEEKLY DEPOSITS
+  // =========================
+
+  const weeklyDeposits = {};
+
+  trades
+    .filter((t) => {
+
+      if (
+        t.kind !== "deposit"
+      ) {
+        return false;
+      }
+
+      const tradeDate =
+        new Date(t.date);
+
+      return (
+        tradeDate.getMonth() ===
+        selectedMonth
+      );
+
+    })
+    .forEach((trade) => {
+
+      const day =
+        new Date(trade.date).getDate();
+
+      const week =
+        Math.ceil(day / 7);
+
+      if (
+        !weeklyDeposits[week]
+      ) {
+        weeklyDeposits[week] = 0;
+      }
+
+      weeklyDeposits[week] +=
+        Number(trade.amount || 0);
+
+    });
+
+  // =========================
+  // ✅ CALENDAR COLORS
+  // =========================
 
   const tileClassName = ({
     date,
     view,
   }) => {
 
-    if (view !== "month")
+    if (view !== "month") {
       return "";
+    }
 
-    const d = formatDate(date);
+    const d =
+      formatDate(date);
 
     const dayTrades =
       trades.filter(
-        t =>
+        (t) =>
           t.date === d &&
-          t.kind !==
-            "withdrawal" &&
+          t.kind !== "withdrawal" &&
           t.kind !== "deposit"
       );
 
-    if (!dayTrades.length)
+    if (!dayTrades.length) {
       return "";
+    }
 
     const profit =
       dayTrades.reduce(
         (sum, t) =>
           sum +
-          Number(
-            t.profit || 0
-          ),
+          Number(t.profit || 0),
         0
       );
 
-    if (profit > 0)
+    if (profit > 0) {
       return "profit-day";
+    }
 
-    if (profit < 0)
+    if (profit < 0) {
       return "loss-day";
+    }
 
     return "";
   };
@@ -230,144 +354,180 @@ export default function CalendarView() {
   return (
     <div>
 
-      {/* ================= TITLE ================= */}
-
-      <h1 className="text-3xl mb-6">
+      <h1 className="text-4xl font-bold mb-6">
         Calendar
       </h1>
 
-      {/* ================= MONTH SECTION ================= */}
+      {/* ========================= */}
+      {/* ✅ MONTH SELECTOR */}
+      {/* ========================= */}
 
-      <div className="bg-gray-900 p-5 rounded-xl mb-6">
+      <div className="card p-4 mb-6 flex justify-between items-center">
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <select
+          value={selectedMonth}
+          onChange={(e) =>
+            setSelectedMonth(
+              Number(e.target.value)
+            )
+          }
+          className="w-52"
+        >
+          <option value={0}>January</option>
+          <option value={1}>February</option>
+          <option value={2}>March</option>
+          <option value={3}>April</option>
+          <option value={4}>May</option>
+          <option value={5}>June</option>
+          <option value={6}>July</option>
+          <option value={7}>August</option>
+          <option value={8}>September</option>
+          <option value={9}>October</option>
+          <option value={10}>November</option>
+          <option value={11}>December</option>
+        </select>
 
-          {/* MONTH SELECTOR */}
-          <select
-            value={selectedMonth}
-            onChange={(e) =>
-              setSelectedMonth(
-                Number(
-                  e.target.value
-                )
-              )
+        <div className="text-right">
+
+          <p className="text-gray-400 text-sm">
+            Month Profit
+          </p>
+
+          <p
+            className={
+              monthProfit >= 0
+                ? "text-green-400 text-3xl font-bold"
+                : "text-red-400 text-3xl font-bold"
             }
-            className="bg-black border border-gray-700 p-3 rounded-lg"
           >
-
-            <option value={0}>
-              January
-            </option>
-
-            <option value={1}>
-              February
-            </option>
-
-            <option value={2}>
-              March
-            </option>
-
-            <option value={3}>
-              April
-            </option>
-
-            <option value={4}>
-              May
-            </option>
-
-            <option value={5}>
-              June
-            </option>
-
-            <option value={6}>
-              July
-            </option>
-
-            <option value={7}>
-              August
-            </option>
-
-            <option value={8}>
-              September
-            </option>
-
-            <option value={9}>
-              October
-            </option>
-
-            <option value={10}>
-              November
-            </option>
-
-            <option value={11}>
-              December
-            </option>
-
-          </select>
-
-          {/* MONTH PROFIT */}
-          <div>
-
-            <p className="text-gray-400">
-              Month Profit
-            </p>
-
-            <h2
-              className={`text-2xl font-bold ${
-                monthProfit >= 0
-                  ? "text-green-400"
-                  : "text-red-400"
-              }`}
-            >
-              $
-              {monthProfit.toFixed(
-                2
-              )}
-            </h2>
-
-          </div>
+            ${monthProfit.toFixed(2)}
+          </p>
 
         </div>
 
       </div>
 
-      {/* ================= WEEKLY PROFITS ================= */}
+      {/* ========================= */}
+      {/* ✅ MONTH STATS */}
+      {/* ========================= */}
 
-      <div className="bg-gray-900 p-5 rounded-xl mb-6">
+      <div className="grid md:grid-cols-3 gap-4 mb-6">
 
-        <h2 className="text-2xl mb-4">
-          Weekly Profits
+        <div className="card p-4">
+
+          <p className="text-gray-400">
+            Monthly Profit
+          </p>
+
+          <p className="text-green-400 text-2xl font-bold">
+            ${monthProfit.toFixed(2)}
+          </p>
+
+        </div>
+
+        <div className="card p-4">
+
+          <p className="text-gray-400">
+            Monthly Withdrawals
+          </p>
+
+          <p className="text-red-400 text-2xl font-bold">
+            ${monthWithdrawals.toFixed(2)}
+          </p>
+
+        </div>
+
+        <div className="card p-4">
+
+          <p className="text-gray-400">
+            Monthly Deposits
+          </p>
+
+          <p className="text-blue-400 text-2xl font-bold">
+            ${monthDeposits.toFixed(2)}
+          </p>
+
+        </div>
+
+      </div>
+
+      {/* ========================= */}
+      {/* ✅ WEEKLY BREAKDOWN */}
+      {/* ========================= */}
+
+      <div className="card p-5 mb-6">
+
+        <h2 className="text-2xl font-bold mb-4">
+          Weekly Breakdown
         </h2>
 
         <div className="grid md:grid-cols-2 gap-4">
 
-          {Object.keys(
-            weeklyProfits
-          ).map((week) => (
+          {[1, 2, 3, 4, 5].map((week) => (
 
             <div
               key={week}
               className="bg-gray-800 p-4 rounded-xl"
             >
 
-              <p className="text-gray-400">
+              <h3 className="font-bold mb-3">
                 Week {week}
-              </p>
-
-              <h3
-                className={`text-xl font-bold ${
-                  weeklyProfits[
-                    week
-                  ] >= 0
-                    ? "text-green-400"
-                    : "text-red-400"
-                }`}
-              >
-                $
-                {weeklyProfits[
-                  week
-                ].toFixed(2)}
               </h3>
+
+              <div className="space-y-2">
+
+                <div className="flex justify-between">
+
+                  <span className="text-gray-400">
+                    Profit
+                  </span>
+
+                  <span className="text-green-400 font-bold">
+                    $
+                    {(
+                      weeklyProfits[
+                        week
+                      ] || 0
+                    ).toFixed(2)}
+                  </span>
+
+                </div>
+
+                <div className="flex justify-between">
+
+                  <span className="text-gray-400">
+                    Withdrawals
+                  </span>
+
+                  <span className="text-red-400 font-bold">
+                    $
+                    {(
+                      weeklyWithdrawals[
+                        week
+                      ] || 0
+                    ).toFixed(2)}
+                  </span>
+
+                </div>
+
+                <div className="flex justify-between">
+
+                  <span className="text-gray-400">
+                    Deposits
+                  </span>
+
+                  <span className="text-blue-400 font-bold">
+                    $
+                    {(
+                      weeklyDeposits[
+                        week
+                      ] || 0
+                    ).toFixed(2)}
+                  </span>
+
+                </div>
+
+              </div>
 
             </div>
 
@@ -377,26 +537,27 @@ export default function CalendarView() {
 
       </div>
 
-      {/* ================= CALENDAR ================= */}
+      {/* ========================= */}
+      {/* ✅ CALENDAR */}
+      {/* ========================= */}
 
       <Calendar
         onChange={setSelectedDate}
         value={selectedDate}
-        tileClassName={
-          tileClassName
-        }
+        tileClassName={tileClassName}
       />
 
-      {/* ================= DAY DETAILS ================= */}
+      {/* ========================= */}
+      {/* ✅ DAY DETAILS */}
+      {/* ========================= */}
 
-      <div className="bg-gray-900 p-6 mt-6 rounded-xl">
+      <div className="card p-6 mt-6">
 
-        <h2 className="text-xl mb-4">
+        <h2 className="text-2xl font-bold mb-6">
           {selected}
         </h2>
 
-        {/* DAY STATS */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid md:grid-cols-4 gap-4 mb-6">
 
           <div>
 
@@ -407,14 +568,11 @@ export default function CalendarView() {
             <p
               className={
                 totalProfit >= 0
-                  ? "text-green-400"
-                  : "text-red-400"
+                  ? "text-green-400 text-2xl font-bold"
+                  : "text-red-400 text-2xl font-bold"
               }
             >
-              $
-              {totalProfit.toFixed(
-                2
-              )}
+              ${totalProfit.toFixed(2)}
             </p>
 
           </div>
@@ -425,7 +583,7 @@ export default function CalendarView() {
               Trades
             </p>
 
-            <p>
+            <p className="text-2xl font-bold">
               {totalTrades}
             </p>
 
@@ -437,7 +595,7 @@ export default function CalendarView() {
               Win Rate
             </p>
 
-            <p>
+            <p className="text-2xl font-bold">
               {winRate}%
             </p>
 
@@ -449,22 +607,22 @@ export default function CalendarView() {
               Avg R:R (Wins)
             </p>
 
-            <p>{avgRR}</p>
+            <p className="text-2xl font-bold">
+              {avgRR}
+            </p>
 
           </div>
 
         </div>
 
-        {/* ================= TRADES ================= */}
+        {/* ========================= */}
+        {/* ✅ TRADES */}
+        {/* ========================= */}
 
-        {tradesForDay.length ===
-          0 && (
-
+        {tradesForDay.length === 0 && (
           <p className="text-gray-500">
-            No trades for this
-            day.
+            No trades for this day.
           </p>
-
         )}
 
         {tradesForDay.map(
@@ -472,60 +630,55 @@ export default function CalendarView() {
 
             <div
               key={index}
-              className="bg-gray-800 p-4 mb-3 rounded-xl"
+              className="bg-gray-800 p-5 rounded-xl mb-4"
             >
 
-              <p className="font-semibold">
-                {trade.asset}
+              <div className="flex justify-between items-center mb-3">
+
+                <h3 className="text-xl font-bold">
+                  {trade.asset}
+                </h3>
+
+                <span
+                  className={
+                    trade.type === "Buy"
+                      ? "text-green-400 font-bold"
+                      : "text-red-400 font-bold"
+                  }
+                >
+                  {trade.type}
+                </span>
+
+              </div>
+
+              <p className="mb-2">
+                Entry: {trade.entry}
+              </p>
+
+              <p className="mb-2">
+                Exit: {trade.exit}
               </p>
 
               <p
                 className={
-                  trade.type ===
-                  "Buy"
-                    ? "text-green-400"
-                    : "text-red-400"
-                }
-              >
-                {trade.type}
-              </p>
-
-              <p>
-                Entry:{" "}
-                {trade.entry}
-                {" | "}
-                Exit:{" "}
-                {trade.exit}
-              </p>
-
-              <p
-                className={
-                  trade.profit >= 0
-                    ? "text-green-400"
-                    : "text-red-400"
+                  Number(trade.profit) >= 0
+                    ? "text-green-400 font-bold"
+                    : "text-red-400 font-bold"
                 }
               >
                 Profit: $
                 {Number(
-                  trade.profit ||
-                    0
+                  trade.profit || 0
                 ).toFixed(2)}
               </p>
 
-              <p>
-                RR:{" "}
-                {trade.rr || 0}
-              </p>
-
-              {/* 📸 CHART */}
+              {/* 📸 SCREENSHOT */}
               {trade.screenshot && (
 
-                <div className="mt-3">
+                <div className="mt-4">
 
                   <a
-                    href={
-                      trade.screenshot
-                    }
+                    href={trade.screenshot}
                     target="_blank"
                     rel="noreferrer"
                     className="text-blue-400 underline"
@@ -534,11 +687,9 @@ export default function CalendarView() {
                   </a>
 
                   <img
-                    src={
-                      trade.screenshot
-                    }
+                    src={trade.screenshot}
                     alt="chart"
-                    className="mt-2 rounded-lg max-h-48"
+                    className="mt-3 rounded-xl max-h-72 border border-gray-700"
                   />
 
                 </div>
