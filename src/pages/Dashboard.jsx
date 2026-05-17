@@ -1,455 +1,299 @@
 import { useEffect, useState } from "react";
-import { db } from "../firebase";
-
 import {
   collection,
   getDocs,
-  addDoc,
 } from "firebase/firestore";
 
+import { db } from "../firebase";
+
 import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
+  Legend,
 } from "recharts";
 
 export default function Dashboard() {
 
   const [trades, setTrades] = useState([]);
 
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-
-  const [depositAmount, setDepositAmount] = useState("");
-
   useEffect(() => {
     fetchTrades();
   }, []);
 
-  // ✅ FETCH TRADES
   const fetchTrades = async () => {
+    const snapshot = await getDocs(collection(db, "trades"));
 
-    const snapshot = await getDocs(
-      collection(db, "trades")
-    );
-
-    const data = snapshot.docs.map(doc => ({
+    const data = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
+    // SORT BY DATE
+    data.sort((a, b) => new Date(a.date) - new Date(b.date));
+
     setTrades(data);
   };
 
-  // ✅ REAL TRADES ONLY
+  // =========================================
+  // REAL TRADES ONLY
+  // =========================================
+
   const realTrades = trades.filter(
-    t =>
-      t.kind !== "withdrawal" &&
-      t.kind !== "deposit"
+    (t) => t.kind !== "deposit" && t.kind !== "withdrawal"
   );
 
-  // ✅ TOTAL PROFIT
-  const totalProfit = realTrades.reduce(
-    (sum, t) =>
-      sum + Number(t.profit || 0),
-    0
-  );
+  // =========================================
+  // WIN RATE
+  // =========================================
 
-  // ✅ WINS / LOSSES
-  const wins = realTrades.filter(
-    t => t.profit > 0
-  ).length;
+  const wins = realTrades.filter((t) => t.profit > 0).length;
 
-  const losses = realTrades.filter(
-    t => t.profit < 0
-  ).length;
+  const losses = realTrades.filter((t) => t.profit < 0).length;
 
-  // ✅ WIN RATE
-  const winRate = realTrades.length
-    ? (
-        (wins / realTrades.length) *
-        100
-      ).toFixed(1)
-    : 0;
+  const pieData = [
+    { name: "Wins", value: wins },
+    { name: "Losses", value: losses },
+  ];
 
-  // ✅ RR (WINS ONLY)
-  const winningTrades = realTrades.filter(
-    t => t.profit > 0
-  );
+  const COLORS = ["#16a34a", "#dc2626"];
 
-  const avgRR = winningTrades.length
-    ? (
-        winningTrades.reduce(
-          (sum, t) =>
-            sum + Number(t.rr || 0),
-          0
-        ) / winningTrades.length
-      ).toFixed(2)
-    : 0;
+  // =========================================
+  // CURRENT WEEK
+  // =========================================
 
-  // ✅ WEEKLY EQUITY CURVE ONLY
   const today = new Date();
 
-  const startOfWeek = new Date(today);
+  const firstDay = new Date(today);
 
-  startOfWeek.setDate(
-    today.getDate() - today.getDay()
+  firstDay.setDate(today.getDate() - today.getDay());
+
+  firstDay.setHours(0, 0, 0, 0);
+
+  // =========================================
+  // ALL TRANSACTIONS BEFORE THIS WEEK
+  // =========================================
+
+  const previousTransactions = trades.filter(
+    (t) => new Date(t.date) < firstDay
   );
 
-  const weeklyTrades = trades.filter(item => {
+  // =========================================
+  // STARTING BALANCE
+  // =========================================
 
-    const tradeDate = new Date(item.date);
+  let startingBalance = 0;
 
-    return tradeDate >= startOfWeek;
+  previousTransactions.forEach((t) => {
+
+    if (t.kind === "deposit") {
+      startingBalance += Number(t.amount || 0);
+    }
+
+    else if (t.kind === "withdrawal") {
+      startingBalance -= Number(t.amount || 0);
+    }
+
+    else {
+      startingBalance += Number(t.profit || 0);
+    }
 
   });
 
-  // ✅ WEEKLY EQUITY DATA
-  const performanceData = weeklyTrades
-    .sort(
-      (a, b) =>
-        new Date(a.date) -
-        new Date(b.date)
-    )
-    .reduce((acc, item, index) => {
+  // =========================================
+  // CURRENT WEEK TRANSACTIONS
+  // =========================================
 
-      const previous =
-        index === 0
-          ? 0
-          : acc[index - 1].equity;
+  const weeklyTransactions = trades.filter(
+    (t) => new Date(t.date) >= firstDay
+  );
 
-      let change = 0;
+  // =========================================
+  // EQUITY CURVE
+  // =========================================
 
-      // ✅ TRADE
-      if (
-        item.kind !== "withdrawal" &&
-        item.kind !== "deposit"
-      ) {
-        change = Number(
-          item.profit || 0
-        );
-      }
+  let runningEquity = startingBalance;
 
-      // ✅ WITHDRAWAL
-      if (item.kind === "withdrawal") {
-        change =
-          -Number(item.amount || 0);
-      }
+  const equityData = weeklyTransactions.map((t) => {
 
-      // ✅ DEPOSIT
-      if (item.kind === "deposit") {
-        change =
-          Number(item.amount || 0);
-      }
+    // DEPOSIT
+    if (t.kind === "deposit") {
+      runningEquity += Number(t.amount || 0);
+    }
 
-      acc.push({
-        date: item.date,
-        equity: previous + change,
-      });
+    // WITHDRAWAL
+    else if (t.kind === "withdrawal") {
+      runningEquity -= Number(t.amount || 0);
+    }
 
-      return acc;
+    // TRADE
+    else {
+      runningEquity += Number(t.profit || 0);
+    }
 
-    }, []);
+    return {
+      date: t.date,
+      equity: Number(runningEquity.toFixed(2)),
+    };
 
-  // ✅ CURRENT EQUITY
+  });
+
+  // =========================================
+  // CURRENT EQUITY
+  // =========================================
+
   const currentEquity =
-    performanceData.length > 0
-      ? performanceData[
-          performanceData.length - 1
-        ].equity
-      : 0;
+    equityData.length > 0
+      ? equityData[equityData.length - 1].equity
+      : startingBalance;
 
-  // ✅ WITHDRAW FUNCTION
-  const handleWithdraw = async () => {
+  // =========================================
+  // WEEK PROFIT
+  // =========================================
 
-    const amount = Number(withdrawAmount);
+  const weekProfit = weeklyTransactions.reduce((sum, t) => {
 
-    if (!amount) return;
-
-    // ✅ MINIMUM EQUITY RULE
-    if (currentEquity - amount < 2.5) {
-      alert(
-        "Equity cannot go below $2.5"
-      );
-      return;
+    if (t.kind === "deposit") {
+      return sum + Number(t.amount || 0);
     }
 
-    await addDoc(
-      collection(db, "trades"),
-      {
-        kind: "withdrawal",
-
-        amount,
-
-        date: new Date().toLocaleDateString(
-          "en-CA"
-        ),
-      }
-    );
-
-    setWithdrawAmount("");
-
-    fetchTrades();
-  };
-
-  // ✅ DEPOSIT FUNCTION
-  const handleDeposit = async () => {
-
-    const amount = Number(depositAmount);
-
-    // ✅ MINIMUM DEPOSIT
-    if (amount < 2.5) {
-      alert(
-        "Minimum deposit is $2.5"
-      );
-      return;
+    if (t.kind === "withdrawal") {
+      return sum - Number(t.amount || 0);
     }
 
-    await addDoc(
-      collection(db, "trades"),
-      {
-        kind: "deposit",
+    return sum + Number(t.profit || 0);
 
-        amount,
-
-        date: new Date().toLocaleDateString(
-          "en-CA"
-        ),
-      }
-    );
-
-    setDepositAmount("");
-
-    fetchTrades();
-  };
+  }, 0);
 
   return (
     <div>
 
-      <h1 className="text-3xl mb-6">
+      <h1 className="text-4xl font-bold mb-6">
         Dashboard
       </h1>
 
-      {/* ================= STATS ================= */}
+      {/* ============================= */}
+      {/* TOP STATS */}
+      {/* ============================= */}
 
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 
-        <div className="bg-gray-900 p-5 rounded-2xl">
-
+        <div className="bg-gray-900 p-6 rounded-2xl">
           <p className="text-gray-400">
-            Total Profit
+            Starting Balance
           </p>
 
-          <h2 className="text-2xl text-green-400 mt-2">
-            ${totalProfit.toFixed(2)}
+          <h2 className="text-3xl font-bold text-blue-400">
+            ${startingBalance.toFixed(2)}
           </h2>
-
         </div>
 
-        <div className="bg-gray-900 p-5 rounded-2xl">
-
-          <p className="text-gray-400">
-            Win Rate
-          </p>
-
-          <h2 className="text-2xl mt-2">
-            {winRate}%
-          </h2>
-
-        </div>
-
-        <div className="bg-gray-900 p-5 rounded-2xl">
-
-          <p className="text-gray-400">
-            Avg R:R (Wins)
-          </p>
-
-          <h2 className="text-2xl mt-2">
-            {avgRR}
-          </h2>
-
-        </div>
-
-        <div className="bg-gray-900 p-5 rounded-2xl">
-
+        <div className="bg-gray-900 p-6 rounded-2xl">
           <p className="text-gray-400">
             Current Equity
           </p>
 
-          <h2 className="text-2xl mt-2 text-blue-400">
+          <h2 className="text-3xl font-bold text-green-400">
             ${currentEquity.toFixed(2)}
           </h2>
+        </div>
 
+        <div className="bg-gray-900 p-6 rounded-2xl">
+          <p className="text-gray-400">
+            Weekly Change
+          </p>
+
+          <h2
+            className={`text-3xl font-bold ${
+              weekProfit >= 0
+                ? "text-green-400"
+                : "text-red-400"
+            }`}
+          >
+            ${weekProfit.toFixed(2)}
+          </h2>
         </div>
 
       </div>
 
-      {/* ================= DEPOSIT & WITHDRAW ================= */}
+      {/* ============================= */}
+      {/* CHARTS */}
+      {/* ============================= */}
 
-      <div className="grid md:grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* WITHDRAW */}
-        <div className="bg-gray-900 p-5 rounded-2xl">
+        {/* PIE CHART */}
 
-          <p className="text-gray-400 mb-3">
-            Withdraw Funds
-          </p>
-
-          <input
-            type="number"
-            placeholder="Amount"
-            value={withdrawAmount}
-            onChange={(e) =>
-              setWithdrawAmount(
-                e.target.value
-              )
-            }
-            className="w-full p-2 rounded bg-black border border-gray-700"
-          />
-
-          <button
-            onClick={handleWithdraw}
-            className="mt-4 w-full bg-red-600 hover:bg-red-700 p-2 rounded"
-          >
-            Withdraw
-          </button>
-
-        </div>
-
-        {/* DEPOSIT */}
-        <div className="bg-gray-900 p-5 rounded-2xl">
-
-          <p className="text-gray-400 mb-3">
-            Deposit Funds
-          </p>
-
-          <input
-            type="number"
-            placeholder="Amount"
-            value={depositAmount}
-            onChange={(e) =>
-              setDepositAmount(
-                e.target.value
-              )
-            }
-            className="w-full p-2 rounded bg-black border border-gray-700"
-          />
-
-          <button
-            onClick={handleDeposit}
-            className="mt-4 w-full bg-green-600 hover:bg-green-700 p-2 rounded"
-          >
-            Deposit
-          </button>
-
-        </div>
-
-      </div>
-
-      {/* ================= CHARTS ================= */}
-
-      <div className="grid md:grid-cols-2 gap-6 mt-8">
-
-        {/* PIE */}
         <div className="bg-gray-900 p-6 rounded-2xl">
 
-          <h2 className="text-xl mb-4">
+          <h2 className="text-2xl mb-4">
             Win Rate
           </h2>
 
-          <div className="h-72">
+          <ResponsiveContainer width="100%" height={300}>
 
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
+            <PieChart>
 
-              <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                outerRadius={100}
+                label
+              >
 
-                <Pie
-                  data={[
-                    {
-                      name: "Wins",
-                      value: wins,
-                    },
-                    {
-                      name: "Losses",
-                      value: losses,
-                    },
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  dataKey="value"
-                  label
-                >
+                {pieData.map((entry, index) => (
+                  <Cell
+                    key={index}
+                    fill={COLORS[index % COLORS.length]}
+                  />
+                ))}
 
-                  <Cell fill="#16a34a" />
+              </Pie>
 
-                  <Cell fill="#dc2626" />
+              <Legend />
 
-                </Pie>
+              <Tooltip />
 
-                <Tooltip />
+            </PieChart>
 
-              </PieChart>
-
-            </ResponsiveContainer>
-
-          </div>
+          </ResponsiveContainer>
 
         </div>
 
-        {/* WEEKLY EQUITY CURVE */}
+        {/* EQUITY CURVE */}
+
         <div className="bg-gray-900 p-6 rounded-2xl">
 
-          <h2 className="text-xl mb-4">
+          <h2 className="text-2xl mb-4">
             Weekly Equity Curve
           </h2>
 
-          <div className="h-72">
+          <ResponsiveContainer width="100%" height={300}>
 
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-            >
+            <LineChart data={equityData}>
 
-              <LineChart
-                data={performanceData}
-              >
+              <XAxis dataKey="date" />
 
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#333"
-                />
+              <YAxis />
 
-                <XAxis
-                  dataKey="date"
-                  stroke="#999"
-                />
+              <Tooltip />
 
-                <YAxis stroke="#999" />
+              <Line
+                type="monotone"
+                dataKey="equity"
+                stroke="#22c55e"
+                strokeWidth={3}
+              />
 
-                <Tooltip />
+            </LineChart>
 
-                <Line
-                  type="monotone"
-                  dataKey="equity"
-                  stroke="#16a34a"
-                  strokeWidth={3}
-                />
-
-              </LineChart>
-
-            </ResponsiveContainer>
-
-          </div>
+          </ResponsiveContainer>
 
         </div>
 
