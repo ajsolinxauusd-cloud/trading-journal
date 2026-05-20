@@ -1,31 +1,131 @@
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+
+import { useEffect, useState } from "react";
+
+import { onAuthStateChanged } from "firebase/auth";
+
+import { auth } from "./firebase";
+
 import Dashboard from "./pages/Dashboard";
+
 import Journal from "./pages/Journal";
+
 import CalendarView from "./pages/CalendarView";
+
 import DaysLesson from "./pages/DaysLesson";
 
+import Navbar from "./components/Navbar";
+
+import Login from "./pages/Login";
+
 export default function App() {
+
+  const [user, setUser] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  // ✅ CHECK LOGIN
+  useEffect(() => {
+
+    const unsubscribe =
+      onAuthStateChanged(
+        auth,
+        (currentUser) => {
+
+          setUser(currentUser);
+
+          setLoading(false);
+
+        }
+      );
+
+    return () => unsubscribe();
+
+  }, []);
+
+  // ✅ LOADING SCREEN
+  if (loading) {
+
+    return (
+      <div className="
+        min-h-screen
+        bg-black
+        text-white
+        flex
+        items-center
+        justify-center
+      ">
+        Loading...
+      </div>
+    );
+
+  }
+
   return (
-    <Router>
-      <div className="min-h-screen bg-black text-white p-4">
 
-        {/* Navigation */}
-        <nav className="flex gap-4 mb-6">
-          <Link to="/">Dashboard</Link>
-          <Link to="/journal">Journal</Link>
-          <Link to="/calendar">Calendar</Link>
-          <Link to="/insights">Day’s Lesson</Link>
-        </nav>
+    <BrowserRouter>
 
-        {/* Routes */}
+      {!user ? (
+
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/journal" element={<Journal />} />
-          <Route path="/calendar" element={<CalendarView />} />
-          <Route path="/insights" element={<DaysLesson />} />
+
+          <Route
+            path="*"
+            element={<Login />}
+          />
+
         </Routes>
 
-      </div>
-    </Router>
+      ) : (
+
+        <>
+          <Navbar />
+
+          <div className="p-4 bg-black min-h-screen text-white">
+
+            <Routes>
+
+              <Route
+                path="/"
+                element={<Dashboard />}
+              />
+
+              <Route
+                path="/journal"
+                element={<Journal />}
+              />
+
+              <Route
+                path="/calendar"
+                element={<CalendarView />}
+              />
+
+              <Route
+                path="/lessons"
+                element={<DaysLesson />}
+              />
+
+              <Route
+                path="*"
+                element={<Navigate to="/" />}
+              />
+
+            </Routes>
+
+          </div>
+        </>
+
+      )}
+
+    </BrowserRouter>
+
   );
+
 }
