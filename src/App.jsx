@@ -5,9 +5,14 @@ import {
   Navigate,
 } from "react-router-dom";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { onAuthStateChanged } from "firebase/auth";
+import {
+  onAuthStateChanged,
+} from "firebase/auth";
 
 import { auth } from "./firebase";
 
@@ -18,6 +23,8 @@ import Journal from "./pages/Journal";
 import CalendarView from "./pages/CalendarView";
 
 import DaysLesson from "./pages/DaysLesson";
+
+import BacktestJournal from "./pages/BacktestJournal";
 
 import Navbar from "./components/Navbar";
 
@@ -31,7 +38,6 @@ export default function App() {
   const [loading, setLoading] =
     useState(true);
 
-  // ✅ CHECK LOGIN
   useEffect(() => {
 
     const unsubscribe =
@@ -46,14 +52,16 @@ export default function App() {
         }
       );
 
-    return () => unsubscribe();
+    return () =>
+      unsubscribe();
 
   }, []);
 
-  // ✅ LOADING SCREEN
+  // ✅ LOADING
   if (loading) {
 
     return (
+
       <div className="
         min-h-screen
         bg-black
@@ -62,8 +70,11 @@ export default function App() {
         items-center
         justify-center
       ">
+
         Loading...
+
       </div>
+
     );
 
   }
@@ -86,9 +97,15 @@ export default function App() {
       ) : (
 
         <>
+
           <Navbar />
 
-          <div className="p-4 bg-black min-h-screen text-white">
+          <div className="
+            p-4
+            bg-black
+            min-h-screen
+            text-white
+          ">
 
             <Routes>
 
@@ -102,24 +119,39 @@ export default function App() {
                 element={<Journal />}
               />
 
+              {/* ✅ BACKTEST */}
+              <Route
+                path="/backtest"
+                element={
+                  <BacktestJournal />
+                }
+              />
+
               <Route
                 path="/calendar"
-                element={<CalendarView />}
+                element={
+                  <CalendarView />
+                }
               />
 
               <Route
                 path="/lessons"
-                element={<DaysLesson />}
+                element={
+                  <DaysLesson />
+                }
               />
 
               <Route
                 path="*"
-                element={<Navigate to="/" />}
+                element={
+                  <Navigate to="/" />
+                }
               />
 
             </Routes>
 
           </div>
+
         </>
 
       )}
