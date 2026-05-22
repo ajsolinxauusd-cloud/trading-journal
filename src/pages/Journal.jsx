@@ -5,7 +5,7 @@ import { db, auth } from "../firebase";
 export default function Journal() {
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [extracting, setExtracting] = useState(false);
+  const [parsingLink, setParsingLink] = useState(false);
 
   const initialForm = {
     asset: "",
@@ -21,6 +21,7 @@ export default function Journal() {
   };
 
   const [form, setForm] = useState(initialForm);
+  const [tradingViewLink, setTradingViewLink] = useState("");
 
   useEffect(() => {
     fetchTrades();
@@ -52,6 +53,99 @@ export default function Journal() {
     }
   };
 
+  // Parse TradingView link to extract trade information
+  const parseTradingViewLink = async (link) => {
+    setParsingLink(true);
+    
+    try {
+      // Method 1: Try to extract from URL parameters
+      const urlParams = new URL(link);
+      const hash = urlParams.hash;
+      
+      // Common TradingView URL patterns
+      let extractedData = {
+        entry: null,
+        exit: null,
+        stopLoss: null,
+        takeProfit: null,
+        asset: null,
+      };
+
+      // Pattern 1: Look for price levels in the URL
+      const pricePattern = /[?&](price|entry|exit|sl|tp)=([^&]+)/gi;
+      const matches = [...link.matchAll(pricePattern)];
+      
+      matches.forEach(match => {
+        const key = match[1].toLowerCase();
+        const value = parseFloat(match[2]);
+        
+        if (key === 'price' || key === 'entry') extractedData.entry = value;
+        if (key === 'exit') extractedData.exit = value;
+        if (key === 'sl') extractedData.stopLoss = value;
+        if (key === 'tp') extractedData.takeProfit = value;
+      });
+
+      // Pattern 2: Look for symbol/asset
+      const symbolPattern = /symbol=([^&]+)/i;
+      const symbolMatch = link.match(symbolPattern);
+      if (symbolMatch) {
+        extractedData.asset = symbolMatch[1].replace(/[_:]/g, '/');
+      }
+
+      // Pattern 3: Try to extract from chart coordinates if available
+      // Some TradingView links contain coordinates like %7B%22x%22%3A...
+      if (hash) {
+        const decodedHash = decodeURIComponent(hash);
+        
+        // Look for price levels in the hash
+        const levelPattern = /(\d+(?:\.\d+)?)/g;
+        const numbers = decodedHash.match(levelPattern);
+        
+        if (numbers && numbers.length >= 2) {
+          // Assume first number is entry, second is exit if not already set
+          if (!extractedData.entry && numbers[0]) extractedData.entry = parseFloat(numbers[0]);
+          if (!extractedData.exit && numbers[1]) extractedData.exit = parseFloat(numbers[1]);
+          if (!extractedData.stopLoss && numbers[2]) extractedData.stopLoss = parseFloat(numbers[2]);
+          if (!extractedData.takeProfit && numbers[3]) extractedData.takeProfit = parseFloat(numbers[3]);
+        }
+      }
+
+      return extractedData;
+      
+    } catch (error) {
+      console.error("Error parsing TradingView link:", error);
+      return null;
+    } finally {
+      setParsingLink(false);
+    }
+  };
+
+  // Handle TradingView link paste/input
+  const handleTradingViewLinkChange = async (e) => {
+    const link = e.target.value;
+    setTradingViewLink(link);
+    
+    if (link && (link.includes('tradingview.com') || link.includes('tv'))) {
+      const parsedData = await parseTradingViewLink(link);
+      
+      if (parsedData) {
+        // Auto-fill form with parsed data
+        const updates = {};
+        
+        if (parsedData.entry) updates.entry = parsedData.entry;
+        if (parsedData.exit) updates.exit = parsedData.exit;
+        if (parsedData.stopLoss) updates.stopLoss = parsedData.stopLoss;
+        if (parsedData.takeProfit) updates.takeProfit = parsedData.takeProfit;
+        if (parsedData.asset) updates.asset = parsedData.asset;
+        
+        if (Object.keys(updates).length > 0) {
+          setForm(prev => ({ ...prev, ...updates, screenshot: link }));
+          alert("Trade information extracted from TradingView link!");
+        }
+      }
+    }
+  };
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -60,137 +154,26 @@ export default function Journal() {
     return new Date().toLocaleDateString("en-CA");
   };
 
-  // ✅ Extract levels from TradingView chart link
-  const extractFromChartLink = (url) => {
-    if (!url) return null;
-
-    try {
-      // Method 1: Parse URL parameters (if chart link contains levels)
-      const urlObj = new URL(url);
-      const params = new URLSearchParams(urlObj.search);
-      
-      const extracted = {
-        entry: params.get('entry') || params.get('price'),
-        takeProfit: params.get('tp') || params.get('takeProfit'),
-        stopLoss: params.get('sl') || params.get('stopLoss'),
-      };
-
-      // Method 2: Parse from TradingView chart URL pattern
-      // Example: https://www.tradingview.com/chart/?symbol=BTCUSD&entry=50000&tp=55000&sl=49000
-      if (!extracted.entry && url.includes('symbol=')) {
-        // Try to extract from common patterns
-        const entryMatch = url.match(/[?&]entry=([^&]+)/);
-        const tpMatch = url.match(/[?&]tp=([^&]+)/);
-        const slMatch = url.match(/[?&]sl=([^&]+)/);
-        
-        if (entryMatch) extracted.entry = entryMatch[1];
-        if (tpMatch) extracted.takeProfit = tpMatch[1];
-        if (slMatch) extracted.stopLoss = slMatch[1];
-      }
-
-      // Method 3: Parse from chart image URL (if using screenshot URL)
-      // Example: Extract from filename or path
-      if (!extracted.entry && (url.includes('.png') || url.includes('.jpg'))) {
-        // Try to extract numbers from filename
-        const numbers = url.match(/(\d+\.?\d*)/g);
-        if (numbers && numbers.length >= 3) {
-          extracted.entry = numbers[0];
-          extracted.takeProfit = numbers[1];
-          extracted.stopLoss = numbers[2];
-        }
-      }
-
-      return extracted;
-    } catch (error) {
-      console.error("Error parsing URL:", error);
-      return null;
-    }
-  };
-
-  // ✅ Auto-fill from chart link
-  const handleAutoExtract = () => {
-    if (!form.screenshot) {
-      alert("Please paste a chart link first");
+  const calculateFromLink = async () => {
+    if (!tradingViewLink) {
+      alert("Please enter a TradingView link first");
       return;
     }
-
-    setExtracting(true);
     
-    try {
-      const extracted = extractFromChartLink(form.screenshot);
+    const parsedData = await parseTradingViewLink(tradingViewLink);
+    
+    if (parsedData) {
+      const updates = {};
+      if (parsedData.entry) updates.entry = parsedData.entry;
+      if (parsedData.exit) updates.exit = parsedData.exit;
+      if (parsedData.stopLoss) updates.stopLoss = parsedData.stopLoss;
+      if (parsedData.takeProfit) updates.takeProfit = parsedData.takeProfit;
+      if (parsedData.asset) updates.asset = parsedData.asset;
       
-      if (extracted) {
-        let updates = {};
-        
-        if (extracted.entry && !form.entry) {
-          updates.entry = extracted.entry;
-        }
-        if (extracted.takeProfit && !form.takeProfit) {
-          updates.takeProfit = extracted.takeProfit;
-        }
-        if (extracted.stopLoss && !form.stopLoss) {
-          updates.stopLoss = extracted.stopLoss;
-        }
-        
-        if (Object.keys(updates).length > 0) {
-          setForm({ ...form, ...updates });
-          alert(`Auto-filled: ${Object.keys(updates).join(', ')}`);
-        } else {
-          alert("No trading levels found in the link. Please enter manually.");
-        }
-      } else {
-        alert("Could not extract levels from this link. Please enter manually.");
-      }
-    } catch (error) {
-      console.error("Extraction error:", error);
-      alert("Error extracting levels. Please enter manually.");
-    } finally {
-      setExtracting(false);
-    }
-  };
-
-  // ✅ Manual entry helper for quick RR calculation
-  const calculateSuggestedTP = () => {
-    if (form.entry && form.stopLoss) {
-      const entry = Number(form.entry);
-      const stopLoss = Number(form.stopLoss);
-      const risk = Math.abs(entry - stopLoss);
-      
-      // Suggest TP at 2x risk (1:2 RR)
-      let suggestedTP;
-      if (form.type === "Buy") {
-        suggestedTP = entry + (risk * 2);
-      } else {
-        suggestedTP = entry - (risk * 2);
-      }
-      
-      if (window.confirm(`Suggested Take Profit (1:2 RR): ${suggestedTP.toFixed(2)}\nAuto-fill?`)) {
-        setForm({ ...form, takeProfit: suggestedTP.toFixed(2) });
-      }
+      setForm(prev => ({ ...prev, ...updates, screenshot: tradingViewLink }));
+      alert("Form auto-filled from TradingView link!");
     } else {
-      alert("Please enter Entry and Stop Loss first");
-    }
-  };
-
-  const calculateSuggestedSL = () => {
-    if (form.entry && form.takeProfit) {
-      const entry = Number(form.entry);
-      const takeProfit = Number(form.takeProfit);
-      const reward = Math.abs(takeProfit - entry);
-      
-      // Suggest SL at 0.5x reward (1:2 RR)
-      let suggestedSL;
-      if (form.type === "Buy") {
-        suggestedSL = entry - (reward / 2);
-      } else {
-        suggestedSL = entry + (reward / 2);
-      }
-      
-      if (window.confirm(`Suggested Stop Loss (1:2 RR): ${suggestedSL.toFixed(2)}\nAuto-fill?`)) {
-        setForm({ ...form, stopLoss: suggestedSL.toFixed(2) });
-      }
-    } else {
-      alert("Please enter Entry and Take Profit first");
+      alert("Could not extract data from this TradingView link. Please fill manually.");
     }
   };
 
@@ -244,13 +227,14 @@ export default function Journal() {
         rr: Number(rr.toFixed(2)),
         tag: form.tag || "",
         lesson: form.lesson || "",
-        screenshot: form.screenshot || "",
+        screenshot: form.screenshot || tradingViewLink || "",
         date: getTodayDate(),
         createdAt: new Date().toISOString(),
       });
 
       // Reset form
       setForm(initialForm);
+      setTradingViewLink("");
       
       // Refresh trades list
       await fetchTrades();
@@ -280,6 +264,30 @@ export default function Journal() {
     <div>
       <h1 className="text-5xl font-bold mb-8">Journal</h1>
 
+      {/* TradingView Link Parser Section */}
+      <div className="bg-gradient-to-r from-blue-900 to-purple-900 p-6 rounded-2xl mb-8">
+        <h2 className="text-2xl font-bold mb-3">📊 Quick Import from TradingView</h2>
+        <p className="text-gray-300 mb-4">Paste your TradingView chart link to auto-fill entry, exit, SL & TP</p>
+        
+        <div className="flex gap-3 flex-col md:flex-row">
+          <input
+            type="text"
+            value={tradingViewLink}
+            onChange={handleTradingViewLinkChange}
+            placeholder="https://www.tradingview.com/chart/..."
+            className="flex-1 p-3 bg-black border border-gray-700 rounded-lg text-white"
+          />
+          <button
+            type="button"
+            onClick={calculateFromLink}
+            disabled={parsingLink}
+            className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold disabled:opacity-50"
+          >
+            {parsingLink ? "Parsing..." : "Auto-Fill from Link"}
+          </button>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="bg-gray-900 p-6 rounded-2xl mb-8">
         <div className="grid md:grid-cols-2 gap-4">
           <div>
@@ -288,97 +296,77 @@ export default function Journal() {
               name="asset"
               value={form.asset}
               onChange={handleChange}
-              placeholder="Asset *"
+              placeholder="e.g., BTC/USD, EUR/USD"
               className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
               required
             />
           </div>
 
           <div>
-            <label className="text-gray-400 text-sm mb-1 block">Type</label>
+            <label className="text-gray-400 text-sm mb-1 block">Trade Type</label>
             <select
               name="type"
               value={form.type}
               onChange={handleChange}
               className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
             >
-              <option>Buy</option>
-              <option>Sell</option>
+              <option>Buy (Long)</option>
+              <option>Sell (Short)</option>
             </select>
           </div>
 
           <div>
-            <label className="text-gray-400 text-sm mb-1 block">Entry *</label>
+            <label className="text-gray-400 text-sm mb-1 block">Entry Price *</label>
             <input
               name="entry"
               type="number"
               step="any"
               value={form.entry}
               onChange={handleChange}
-              placeholder="Entry *"
+              placeholder="Entry price"
               className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
               required
             />
           </div>
 
           <div>
-            <label className="text-gray-400 text-sm mb-1 block">Exit *</label>
+            <label className="text-gray-400 text-sm mb-1 block">Exit Price *</label>
             <input
               name="exit"
               type="number"
               step="any"
               value={form.exit}
               onChange={handleChange}
-              placeholder="Exit *"
+              placeholder="Exit price"
               className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
               required
             />
           </div>
 
           <div>
-            <label className="text-gray-400 text-sm mb-1 block">Stop Loss</label>
-            <div className="flex gap-2">
-              <input
-                name="stopLoss"
-                type="number"
-                step="any"
-                value={form.stopLoss}
-                onChange={handleChange}
-                placeholder="Stop Loss"
-                className="flex-1 p-3 bg-black border border-gray-700 rounded-lg text-white"
-              />
-              <button
-                type="button"
-                onClick={calculateSuggestedSL}
-                className="px-4 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
-                title="Calculate from Entry & Take Profit"
-              >
-                Auto SL
-              </button>
-            </div>
+            <label className="text-gray-400 text-sm mb-1 block">Stop Loss (SL)</label>
+            <input
+              name="stopLoss"
+              type="number"
+              step="any"
+              value={form.stopLoss}
+              onChange={handleChange}
+              placeholder="Stop loss price"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+            />
           </div>
 
           <div>
-            <label className="text-gray-400 text-sm mb-1 block">Take Profit</label>
-            <div className="flex gap-2">
-              <input
-                name="takeProfit"
-                type="number"
-                step="any"
-                value={form.takeProfit}
-                onChange={handleChange}
-                placeholder="Take Profit"
-                className="flex-1 p-3 bg-black border border-gray-700 rounded-lg text-white"
-              />
-              <button
-                type="button"
-                onClick={calculateSuggestedTP}
-                className="px-4 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
-                title="Calculate from Entry & Stop Loss"
-              >
-                Auto TP
-              </button>
-            </div>
+            <label className="text-gray-400 text-sm mb-1 block">Take Profit (TP)</label>
+            <input
+              name="takeProfit"
+              type="number"
+              step="any"
+              value={form.takeProfit}
+              onChange={handleChange}
+              placeholder="Take profit price"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+            />
           </div>
 
           <div>
@@ -389,7 +377,7 @@ export default function Journal() {
               step="any"
               value={form.lot}
               onChange={handleChange}
-              placeholder="Lot Size *"
+              placeholder="Position size"
               className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
               required
             />
@@ -401,43 +389,30 @@ export default function Journal() {
               name="tag"
               value={form.tag}
               onChange={handleChange}
-              placeholder="Tag (e.g., BTC, EURUSD)"
+              placeholder="e.g., Trend Following, Scalping"
               className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
             />
           </div>
 
           <div className="md:col-span-2">
-            <label className="text-gray-400 text-sm mb-1 block">Chart/Screenshot Link</label>
-            <div className="flex gap-2">
-              <input
-                name="screenshot"
-                value={form.screenshot}
-                onChange={handleChange}
-                placeholder="TradingView link or screenshot URL"
-                className="flex-1 p-3 bg-black border border-gray-700 rounded-lg text-white"
-              />
-              <button
-                type="button"
-                onClick={handleAutoExtract}
-                disabled={extracting}
-                className="px-6 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold disabled:opacity-50"
-              >
-                {extracting ? "Extracting..." : "Auto-Fill"}
-              </button>
-            </div>
-            <p className="text-gray-500 text-xs mt-1">
-              💡 Paste TradingView link with parameters: ?entry=50000&tp=55000&sl=49000
-            </p>
+            <label className="text-gray-400 text-sm mb-1 block">Chart/Screenshot URL</label>
+            <input
+              name="screenshot"
+              value={form.screenshot}
+              onChange={handleChange}
+              placeholder="TradingView link or screenshot URL"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+            />
           </div>
         </div>
 
         <div className="mt-4">
-          <label className="text-gray-400 text-sm mb-1 block">Lesson learned...</label>
+          <label className="text-gray-400 text-sm mb-1 block">Lesson Learned</label>
           <textarea
             name="lesson"
             value={form.lesson}
             onChange={handleChange}
-            placeholder="Lesson learned..."
+            placeholder="What did you learn from this trade?"
             className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white min-h-[120px]"
           />
         </div>
@@ -457,7 +432,7 @@ export default function Journal() {
             <div key={trade.id} className="bg-gray-900 p-5 rounded-xl">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <h3 className="text-xl font-bold">{trade.asset}</h3>
                     <span className="text-gray-400 text-sm">
                       📅 {formatDisplayDate(trade.date)}
@@ -469,7 +444,7 @@ export default function Journal() {
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                 <div>
                   <p className="text-gray-400 text-sm">Entry</p>
                   <p className="font-semibold">{trade.entry}</p>
@@ -500,15 +475,13 @@ export default function Journal() {
                     ${trade.profit}
                   </p>
                 </div>
+                {trade.rr > 0 && (
+                  <div>
+                    <p className="text-gray-400 text-sm">R:R Ratio</p>
+                    <p className="font-semibold text-blue-400">{trade.rr}</p>
+                  </div>
+                )}
               </div>
-              
-              {trade.rr > 0 && (
-                <div className="mb-2">
-                  <span className="bg-yellow-900 text-yellow-400 px-2 py-1 rounded text-sm">
-                    R:R {trade.rr}
-                  </span>
-                </div>
-              )}
               
               {trade.tag && (
                 <div className="mb-2">
@@ -528,7 +501,7 @@ export default function Journal() {
               {trade.screenshot && (
                 <div className="mt-3">
                   <a href={trade.screenshot} target="_blank" rel="noreferrer" className="text-blue-400 underline hover:text-blue-300">
-                    📸 View Chart
+                    📸 View Chart/Screenshot
                   </a>
                 </div>
               )}
