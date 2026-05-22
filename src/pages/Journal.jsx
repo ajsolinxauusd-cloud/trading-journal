@@ -13,24 +13,35 @@ export default function Journal() {
   const [trades, setTrades] =
     useState([]);
 
+  const initialForm = {
+    asset: "",
+    type: "Buy",
+
+    entry: "",
+    exit: "",
+
+    stopLoss: "",
+    takeProfit: "",
+
+    lot: "",
+
+    rr: "",
+    profit: "",
+
+    tag: "",
+
+    lesson: "",
+
+    screenshot: "",
+
+    date:
+      new Date()
+        .toISOString()
+        .split("T")[0],
+  };
+
   const [form, setForm] =
-    useState({
-      asset: "",
-      type: "Buy",
-      entry: "",
-      exit: "",
-      stopLoss: "",
-      takeProfit: "",
-      rr: "",
-      profit: "",
-      tag: "",
-      lesson: "",
-      screenshot: "",
-      date:
-        new Date().toLocaleDateString(
-          "en-CA"
-        ),
-    });
+    useState(initialForm);
 
   useEffect(() => {
     fetchTrades();
@@ -58,7 +69,7 @@ export default function Journal() {
 
   };
 
-  // ✅ HANDLE INPUT
+  // ✅ INPUT
   const handleChange = (e) => {
 
     setForm({
@@ -76,46 +87,79 @@ export default function Journal() {
 
     e.preventDefault();
 
+    const entry =
+      Number(form.entry);
+
+    const exit =
+      Number(form.exit);
+
+    const stopLoss =
+      Number(form.stopLoss);
+
+    const takeProfit =
+      Number(form.takeProfit);
+
+    const lot =
+      Number(form.lot);
+
+    // ✅ PROFIT
+    let profit = 0;
+
+    if (form.type === "Buy") {
+
+      profit =
+        (exit - entry) * lot;
+
+    } else {
+
+      profit =
+        (entry - exit) * lot;
+
+    }
+
+    // ✅ RISK
+    const risk =
+      Math.abs(
+        entry - stopLoss
+      ) * lot;
+
+    // ✅ REWARD
+    const reward =
+      Math.abs(
+        takeProfit - entry
+      ) * lot;
+
+    // ✅ RR
+    const rr =
+      risk > 0
+        ? (
+            reward / risk
+          ).toFixed(2)
+        : 0;
+
     await addDoc(
       collection(db, "trades"),
       {
         ...form,
-        profit: Number(
-          form.profit
-        ),
-        rr: Number(form.rr),
-        entry: Number(
-          form.entry
-        ),
-        exit: Number(
-          form.exit
-        ),
-        stopLoss: Number(
-          form.stopLoss
-        ),
-        takeProfit: Number(
-          form.takeProfit
-        ),
+
+        entry,
+        exit,
+
+        stopLoss,
+        takeProfit,
+
+        lot,
+
+        profit:
+          Number(
+            profit.toFixed(2)
+          ),
+
+        rr: Number(rr),
       }
     );
 
-    setForm({
-      asset: "",
-      type: "Buy",
-      entry: "",
-      exit: "",
-      stopLoss: "",
-      takeProfit: "",
-      rr: "",
-      profit: "",
-      tag: "",
-      lesson: "",
-      screenshot: "",
-      date:
-        new Date().toLocaleDateString(
-          "en-CA"
-        ),
-    });
+    setForm(initialForm);
 
     fetchTrades();
 
@@ -125,13 +169,17 @@ export default function Journal() {
 
     <div>
 
-      <h1 className="text-4xl font-bold mb-6">
-        Trading Journal
+      <h1 className="
+        text-5xl
+        font-bold
+        mb-8
+      ">
+        Journal
       </h1>
 
-      {/* ======================= */}
-      {/* ✅ FORM */}
-      {/* ======================= */}
+      {/* ====================== */}
+      {/* FORM */}
+      {/* ====================== */}
 
       <form
         onSubmit={handleSubmit}
@@ -140,139 +188,218 @@ export default function Journal() {
           p-6
           rounded-2xl
           mb-8
-          grid
-          md:grid-cols-2
-          gap-4
         "
       >
 
-        <input
-          name="asset"
-          placeholder="Asset"
-          value={form.asset}
-          onChange={handleChange}
-          className="input"
-          required
-        />
+        <div className="
+          grid
+          md:grid-cols-2
+          gap-4
+        ">
 
-        <select
-          name="type"
-          value={form.type}
-          onChange={handleChange}
-          className="input"
-        >
-          <option>
-            Buy
-          </option>
+          {/* ASSET */}
+          <input
+            type="text"
+            name="asset"
+            placeholder="Asset"
+            value={form.asset}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+            required
+          />
 
-          <option>
-            Sell
-          </option>
-        </select>
+          {/* TYPE */}
+          <select
+            name="type"
+            value={form.type}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+          >
+            <option value="Buy">
+              Buy
+            </option>
 
-        <input
-          name="entry"
-          type="number"
-          placeholder="Entry"
-          value={form.entry}
-          onChange={handleChange}
-          className="input"
-        />
+            <option value="Sell">
+              Sell
+            </option>
 
-        <input
-          name="exit"
-          type="number"
-          placeholder="Exit"
-          value={form.exit}
-          onChange={handleChange}
-          className="input"
-        />
+          </select>
 
-        <input
-          name="stopLoss"
-          type="number"
-          placeholder="Stop Loss"
-          value={form.stopLoss}
-          onChange={handleChange}
-          className="input"
-        />
+          {/* ENTRY */}
+          <input
+            type="number"
+            name="entry"
+            placeholder="Entry"
+            value={form.entry}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+            required
+          />
 
-        {/* ✅ TAKE PROFIT */}
-        <input
-          name="takeProfit"
-          type="number"
-          placeholder="Take Profit"
-          value={form.takeProfit}
-          onChange={handleChange}
-          className="input"
-        />
+          {/* EXIT */}
+          <input
+            type="number"
+            name="exit"
+            placeholder="Exit"
+            value={form.exit}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+            required
+          />
 
-        <input
-          name="rr"
-          type="number"
-          step="0.01"
-          placeholder="R:R"
-          value={form.rr}
-          onChange={handleChange}
-          className="input"
-        />
+          {/* STOP LOSS */}
+          <input
+            type="number"
+            name="stopLoss"
+            placeholder="Stop Loss"
+            value={form.stopLoss}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+            required
+          />
 
-        <input
-          name="profit"
-          type="number"
-          step="0.01"
-          placeholder="Profit"
-          value={form.profit}
-          onChange={handleChange}
-          className="input"
-        />
+          {/* TAKE PROFIT */}
+          <input
+            type="number"
+            name="takeProfit"
+            placeholder="Take Profit"
+            value={form.takeProfit}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+            required
+          />
 
-        {/* ✅ TAG */}
-        <input
-          name="tag"
-          placeholder="Tag (Scalp, Breakout...)"
-          value={form.tag}
-          onChange={handleChange}
-          className="input"
-        />
+          {/* LOT */}
+          <input
+            type="number"
+            name="lot"
+            placeholder="Lot Size"
+            value={form.lot}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+            required
+          />
 
-        <input
-          name="screenshot"
-          placeholder="Chart Screenshot URL"
-          value={form.screenshot}
-          onChange={handleChange}
-          className="input"
-        />
+          {/* TAG */}
+          <input
+            type="text"
+            name="tag"
+            placeholder="Tag (Breakout / Scalping)"
+            value={form.tag}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+          />
 
-        <input
-          name="date"
-          type="date"
-          value={form.date}
-          onChange={handleChange}
-          className="input"
-        />
+          {/* SCREENSHOT */}
+          <input
+            type="text"
+            name="screenshot"
+            placeholder="Chart Link / Screenshot URL"
+            value={form.screenshot}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+          />
 
+          {/* DATE */}
+          <input
+            type="date"
+            name="date"
+            value={form.date}
+            onChange={handleChange}
+            className="
+              p-3
+              rounded-lg
+              bg-black
+              border
+              border-gray-700
+            "
+          />
+
+        </div>
+
+        {/* LESSON */}
         <textarea
           name="lesson"
-          placeholder="Lesson"
+          placeholder="Lesson learned..."
           value={form.lesson}
           onChange={handleChange}
           className="
-            input
-            md:col-span-2
+            w-full
+            mt-4
+            p-3
+            rounded-lg
+            bg-black
+            border
+            border-gray-700
             min-h-[120px]
           "
         />
 
+        {/* BUTTON */}
         <button
           type="submit"
           className="
+            mt-4
+            w-full
             bg-green-600
             hover:bg-green-700
             p-3
-            rounded-xl
-            font-bold
-            md:col-span-2
+            rounded-lg
+            font-semibold
           "
         >
           Save Trade
@@ -280,9 +407,9 @@ export default function Journal() {
 
       </form>
 
-      {/* ======================= */}
-      {/* ✅ TRADE LIST */}
-      {/* ======================= */}
+      {/* ====================== */}
+      {/* TRADE HISTORY */}
+      {/* ====================== */}
 
       <div className="space-y-4">
 
@@ -292,7 +419,7 @@ export default function Journal() {
             key={trade.id}
             className="
               bg-gray-900
-              p-6
+              p-5
               rounded-2xl
             "
           >
@@ -304,17 +431,12 @@ export default function Journal() {
               mb-4
             ">
 
-              <div>
-
-                <h2 className="text-2xl font-bold">
-                  {trade.asset}
-                </h2>
-
-                <p className="text-gray-400">
-                  {trade.date}
-                </p>
-
-              </div>
+              <h2 className="
+                text-2xl
+                font-bold
+              ">
+                {trade.asset}
+              </h2>
 
               <span
                 className={
@@ -331,7 +453,7 @@ export default function Journal() {
             <div className="
               grid
               md:grid-cols-3
-              gap-4
+              gap-3
             ">
 
               <p>
@@ -352,11 +474,16 @@ export default function Journal() {
                 {trade.stopLoss}
               </p>
 
-              {/* ✅ TP */}
               <p>
                 Take Profit:
                 {" "}
                 {trade.takeProfit}
+              </p>
+
+              <p>
+                Lot:
+                {" "}
+                {trade.lot}
               </p>
 
               <p>
@@ -365,63 +492,68 @@ export default function Journal() {
                 {trade.rr}
               </p>
 
-              <p
-                className={
-                  Number(
-                    trade.profit
-                  ) >= 0
-                    ? "text-green-400 font-bold"
-                    : "text-red-400 font-bold"
-                }
-              >
-                Profit:
-                {" "}
-                $
-                {Number(
-                  trade.profit
-                ).toFixed(2)}
-              </p>
-
-              {/* ✅ TAG */}
-              <p>
-                Tag:
-                {" "}
-                <span className="text-blue-400">
-                  {trade.tag}
-                </span>
-              </p>
-
             </div>
 
-            {/* ✅ LESSON */}
-            {trade.lesson && (
+            <p
+              className={
+                Number(trade.profit) >= 0
+                  ? "text-green-400 font-bold mt-3"
+                  : "text-red-400 font-bold mt-3"
+              }
+            >
+              Profit:
+              {" "}
+              $
+              {Number(
+                trade.profit
+              ).toFixed(2)}
+            </p>
 
-              <div className="mt-4">
+            {/* TAG */}
+            {trade.tag && (
 
-                <p className="
-                  text-gray-400
-                  mb-1
+              <p className="mt-2">
+
+                <span className="
+                  text-blue-400
+                  font-semibold
                 ">
-                  Lesson
-                </p>
+                  Tag:
+                </span>
 
-                <p>
-                  {trade.lesson}
-                </p>
+                {" "}
+                {trade.tag}
 
-              </div>
+              </p>
 
             )}
 
-            {/* ✅ SCREENSHOT */}
+            {/* LESSON */}
+            {trade.lesson && (
+
+              <p className="mt-2">
+
+                <span className="
+                  text-yellow-400
+                  font-semibold
+                ">
+                  Lesson:
+                </span>
+
+                {" "}
+                {trade.lesson}
+
+              </p>
+
+            )}
+
+            {/* SCREENSHOT */}
             {trade.screenshot && (
 
               <div className="mt-4">
 
                 <a
-                  href={
-                    trade.screenshot
-                  }
+                  href={trade.screenshot}
                   target="_blank"
                   rel="noreferrer"
                   className="
@@ -431,20 +563,6 @@ export default function Journal() {
                 >
                   View Chart
                 </a>
-
-                <img
-                  src={
-                    trade.screenshot
-                  }
-                  alt="chart"
-                  className="
-                    mt-3
-                    rounded-xl
-                    border
-                    border-gray-700
-                    max-h-96
-                  "
-                />
 
               </div>
 
