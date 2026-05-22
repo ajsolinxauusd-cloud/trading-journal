@@ -5,7 +5,6 @@ import { db, auth } from "../firebase";
 export default function Journal() {
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [parsingLink, setParsingLink] = useState(false);
 
   const initialForm = {
     asset: "",
@@ -21,7 +20,6 @@ export default function Journal() {
   };
 
   const [form, setForm] = useState(initialForm);
-  const [tradingViewLink, setTradingViewLink] = useState("");
 
   useEffect(() => {
     fetchTrades();
@@ -53,128 +51,12 @@ export default function Journal() {
     }
   };
 
-  // Parse TradingView link to extract trade information
-  const parseTradingViewLink = async (link) => {
-    setParsingLink(true);
-    
-    try {
-      // Method 1: Try to extract from URL parameters
-      const urlParams = new URL(link);
-      const hash = urlParams.hash;
-      
-      // Common TradingView URL patterns
-      let extractedData = {
-        entry: null,
-        exit: null,
-        stopLoss: null,
-        takeProfit: null,
-        asset: null,
-      };
-
-      // Pattern 1: Look for price levels in the URL
-      const pricePattern = /[?&](price|entry|exit|sl|tp)=([^&]+)/gi;
-      const matches = [...link.matchAll(pricePattern)];
-      
-      matches.forEach(match => {
-        const key = match[1].toLowerCase();
-        const value = parseFloat(match[2]);
-        
-        if (key === 'price' || key === 'entry') extractedData.entry = value;
-        if (key === 'exit') extractedData.exit = value;
-        if (key === 'sl') extractedData.stopLoss = value;
-        if (key === 'tp') extractedData.takeProfit = value;
-      });
-
-      // Pattern 2: Look for symbol/asset
-      const symbolPattern = /symbol=([^&]+)/i;
-      const symbolMatch = link.match(symbolPattern);
-      if (symbolMatch) {
-        extractedData.asset = symbolMatch[1].replace(/[_:]/g, '/');
-      }
-
-      // Pattern 3: Try to extract from chart coordinates if available
-      // Some TradingView links contain coordinates like %7B%22x%22%3A...
-      if (hash) {
-        const decodedHash = decodeURIComponent(hash);
-        
-        // Look for price levels in the hash
-        const levelPattern = /(\d+(?:\.\d+)?)/g;
-        const numbers = decodedHash.match(levelPattern);
-        
-        if (numbers && numbers.length >= 2) {
-          // Assume first number is entry, second is exit if not already set
-          if (!extractedData.entry && numbers[0]) extractedData.entry = parseFloat(numbers[0]);
-          if (!extractedData.exit && numbers[1]) extractedData.exit = parseFloat(numbers[1]);
-          if (!extractedData.stopLoss && numbers[2]) extractedData.stopLoss = parseFloat(numbers[2]);
-          if (!extractedData.takeProfit && numbers[3]) extractedData.takeProfit = parseFloat(numbers[3]);
-        }
-      }
-
-      return extractedData;
-      
-    } catch (error) {
-      console.error("Error parsing TradingView link:", error);
-      return null;
-    } finally {
-      setParsingLink(false);
-    }
-  };
-
-  // Handle TradingView link paste/input
-  const handleTradingViewLinkChange = async (e) => {
-    const link = e.target.value;
-    setTradingViewLink(link);
-    
-    if (link && (link.includes('tradingview.com') || link.includes('tv'))) {
-      const parsedData = await parseTradingViewLink(link);
-      
-      if (parsedData) {
-        // Auto-fill form with parsed data
-        const updates = {};
-        
-        if (parsedData.entry) updates.entry = parsedData.entry;
-        if (parsedData.exit) updates.exit = parsedData.exit;
-        if (parsedData.stopLoss) updates.stopLoss = parsedData.stopLoss;
-        if (parsedData.takeProfit) updates.takeProfit = parsedData.takeProfit;
-        if (parsedData.asset) updates.asset = parsedData.asset;
-        
-        if (Object.keys(updates).length > 0) {
-          setForm(prev => ({ ...prev, ...updates, screenshot: link }));
-          alert("Trade information extracted from TradingView link!");
-        }
-      }
-    }
-  };
-
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const getTodayDate = () => {
     return new Date().toLocaleDateString("en-CA");
-  };
-
-  const calculateFromLink = async () => {
-    if (!tradingViewLink) {
-      alert("Please enter a TradingView link first");
-      return;
-    }
-    
-    const parsedData = await parseTradingViewLink(tradingViewLink);
-    
-    if (parsedData) {
-      const updates = {};
-      if (parsedData.entry) updates.entry = parsedData.entry;
-      if (parsedData.exit) updates.exit = parsedData.exit;
-      if (parsedData.stopLoss) updates.stopLoss = parsedData.stopLoss;
-      if (parsedData.takeProfit) updates.takeProfit = parsedData.takeProfit;
-      if (parsedData.asset) updates.asset = parsedData.asset;
-      
-      setForm(prev => ({ ...prev, ...updates, screenshot: tradingViewLink }));
-      alert("Form auto-filled from TradingView link!");
-    } else {
-      alert("Could not extract data from this TradingView link. Please fill manually.");
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -227,14 +109,13 @@ export default function Journal() {
         rr: Number(rr.toFixed(2)),
         tag: form.tag || "",
         lesson: form.lesson || "",
-        screenshot: form.screenshot || tradingViewLink || "",
+        screenshot: form.screenshot || "",
         date: getTodayDate(),
         createdAt: new Date().toISOString(),
       });
 
       // Reset form
       setForm(initialForm);
-      setTradingViewLink("");
       
       // Refresh trades list
       await fetchTrades();
@@ -263,30 +144,6 @@ export default function Journal() {
   return (
     <div>
       <h1 className="text-5xl font-bold mb-8">Journal</h1>
-
-      {/* TradingView Link Parser Section */}
-      <div className="bg-gradient-to-r from-blue-900 to-purple-900 p-6 rounded-2xl mb-8">
-        <h2 className="text-2xl font-bold mb-3">📊 Quick Import from TradingView</h2>
-        <p className="text-gray-300 mb-4">Paste your TradingView chart link to auto-fill entry, exit, SL & TP</p>
-        
-        <div className="flex gap-3 flex-col md:flex-row">
-          <input
-            type="text"
-            value={tradingViewLink}
-            onChange={handleTradingViewLinkChange}
-            placeholder="https://www.tradingview.com/chart/..."
-            className="flex-1 p-3 bg-black border border-gray-700 rounded-lg text-white"
-          />
-          <button
-            type="button"
-            onClick={calculateFromLink}
-            disabled={parsingLink}
-            className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold disabled:opacity-50"
-          >
-            {parsingLink ? "Parsing..." : "Auto-Fill from Link"}
-          </button>
-        </div>
-      </div>
 
       <form onSubmit={handleSubmit} className="bg-gray-900 p-6 rounded-2xl mb-8">
         <div className="grid md:grid-cols-2 gap-4">
@@ -351,7 +208,7 @@ export default function Journal() {
               step="any"
               value={form.stopLoss}
               onChange={handleChange}
-              placeholder="Stop loss price"
+              placeholder="Stop loss price (optional)"
               className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
             />
           </div>
@@ -364,7 +221,7 @@ export default function Journal() {
               step="any"
               value={form.takeProfit}
               onChange={handleChange}
-              placeholder="Take profit price"
+              placeholder="Take profit price (optional)"
               className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
             />
           </div>
@@ -400,7 +257,7 @@ export default function Journal() {
               name="screenshot"
               value={form.screenshot}
               onChange={handleChange}
-              placeholder="TradingView link or screenshot URL"
+              placeholder="TradingView link or screenshot URL (optional)"
               className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
             />
           </div>
