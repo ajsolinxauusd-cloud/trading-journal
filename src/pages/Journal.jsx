@@ -127,6 +127,17 @@ export default function Journal() {
     }
   };
 
+  // Format date for display
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return "Date not set";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   if (loading) {
     return <div className="text-white">Loading trades...</div>;
   }
@@ -137,102 +148,132 @@ export default function Journal() {
 
       <form onSubmit={handleSubmit} className="bg-gray-900 p-6 rounded-2xl mb-8">
         <div className="grid md:grid-cols-2 gap-4">
-          <input
-            name="asset"
-            value={form.asset}
-            onChange={handleChange}
-            placeholder="Asset *"
-            className="p-3 bg-black border border-gray-700 rounded-lg text-white"
-            required
-          />
+          <div>
+            <label className="text-gray-400 text-sm mb-1 block">Asset *</label>
+            <input
+              name="asset"
+              value={form.asset}
+              onChange={handleChange}
+              placeholder="Asset *"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+              required
+            />
+          </div>
 
-          <select
-            name="type"
-            value={form.type}
-            onChange={handleChange}
-            className="p-3 bg-black border border-gray-700 rounded-lg text-white"
-          >
-            <option>Buy</option>
-            <option>Sell</option>
-          </select>
+          <div>
+            <label className="text-gray-400 text-sm mb-1 block">Type</label>
+            <select
+              name="type"
+              value={form.type}
+              onChange={handleChange}
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+            >
+              <option>Buy</option>
+              <option>Sell</option>
+            </select>
+          </div>
 
-          <input
-            name="entry"
-            type="number"
-            step="any"
-            value={form.entry}
-            onChange={handleChange}
-            placeholder="Entry *"
-            className="p-3 bg-black border border-gray-700 rounded-lg text-white"
-            required
-          />
+          <div>
+            <label className="text-gray-400 text-sm mb-1 block">Entry *</label>
+            <input
+              name="entry"
+              type="number"
+              step="any"
+              value={form.entry}
+              onChange={handleChange}
+              placeholder="Entry *"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+              required
+            />
+          </div>
 
-          <input
-            name="exit"
-            type="number"
-            step="any"
-            value={form.exit}
-            onChange={handleChange}
-            placeholder="Exit *"
-            className="p-3 bg-black border border-gray-700 rounded-lg text-white"
-            required
-          />
+          <div>
+            <label className="text-gray-400 text-sm mb-1 block">Exit *</label>
+            <input
+              name="exit"
+              type="number"
+              step="any"
+              value={form.exit}
+              onChange={handleChange}
+              placeholder="Exit *"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+              required
+            />
+          </div>
 
-          <input
-            name="stopLoss"
-            type="number"
-            step="any"
-            value={form.stopLoss}
-            onChange={handleChange}
-            placeholder="Stop Loss (optional)"
-            className="p-3 bg-black border border-gray-700 rounded-lg text-white"
-          />
+          <div>
+            <label className="text-gray-400 text-sm mb-1 block">Stop Loss (optional)</label>
+            <input
+              name="stopLoss"
+              type="number"
+              step="any"
+              value={form.stopLoss}
+              onChange={handleChange}
+              placeholder="Stop Loss (optional)"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+            />
+          </div>
 
-          <input
-            name="takeProfit"
-            type="number"
-            step="any"
-            value={form.takeProfit}
-            onChange={handleChange}
-            placeholder="Take Profit (optional)"
-            className="p-3 bg-black border border-gray-700 rounded-lg text-white"
-          />
+          <div>
+            <label className="text-gray-400 text-sm mb-1 block">Take Profit (optional)</label>
+            <input
+              name="takeProfit"
+              type="number"
+              step="any"
+              value={form.takeProfit}
+              onChange={handleChange}
+              placeholder="Take Profit (optional)"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+            />
+          </div>
 
-          <input
-            name="lot"
-            type="number"
-            step="any"
-            value={form.lot}
-            onChange={handleChange}
-            placeholder="Lot Size *"
-            className="p-3 bg-black border border-gray-700 rounded-lg text-white"
-            required
-          />
+          <div>
+            <label className="text-gray-400 text-sm mb-1 block">Lot Size *</label>
+            <input
+              name="lot"
+              type="number"
+              step="any"
+              value={form.lot}
+              onChange={handleChange}
+              placeholder="Lot Size *"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+              required
+            />
+          </div>
 
-          <input
-            name="tag"
-            value={form.tag}
-            onChange={handleChange}
-            placeholder="Tag (e.g., BTC, EURUSD)"
-            className="p-3 bg-black border border-gray-700 rounded-lg text-white"
-          />
+          <div>
+            <label className="text-gray-400 text-sm mb-1 block">Tag</label>
+            <input
+              name="tag"
+              value={form.tag}
+              onChange={handleChange}
+              placeholder="Tag (e.g., BTC, EURUSD)"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+            />
+          </div>
 
-          <input
-            name="screenshot"
-            value={form.screenshot}
-            onChange={handleChange}
-            placeholder="Screenshot URL"
-            className="p-3 bg-black border border-gray-700 rounded-lg text-white"
-          />
+          <div className="md:col-span-2">
+            <label className="text-gray-400 text-sm mb-1 block">Screenshot URL</label>
+            <input
+              name="screenshot"
+              value={form.screenshot}
+              onChange={handleChange}
+              placeholder="Screenshot URL"
+              className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white"
+            />
+          </div>
         </div>
 
-        <textarea
-          name="lesson"
-          value={form.lesson}
-          onChange={handleChange}
-          placeholder="Lesson learned..."
-          className="w-full mt-4 p-3 bg-black border border-gray-700 rounded-lg text-white min-h-[120px]"
-        />
+        <div className="mt-4">
+          <label className="text-gray-400 text-sm mb-1 block">Lesson learned...</label>
+          <textarea
+            name="lesson"
+            value={form.lesson}
+            onChange={handleChange}
+            placeholder="Lesson learned..."
+            className="w-full p-3 bg-black border border-gray-700 rounded-lg text-white min-h-[120px]"
+          />
+        </div>
 
         <button type="submit" className="mt-4 w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg font-semibold">
           Save Trade
@@ -249,26 +290,61 @@ export default function Journal() {
             <div key={trade.id} className="bg-gray-900 p-5 rounded-xl">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="text-xl font-bold">{trade.asset}</h3>
-                  <p className="text-gray-400 text-sm">{trade.date}</p>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xl font-bold">{trade.asset}</h3>
+                    {/* ✅ DATE DISPLAYED HERE */}
+                    <span className="text-gray-400 text-sm">
+                      📅 {formatDisplayDate(trade.date)}
+                    </span>
+                  </div>
                 </div>
-                <span className={`font-bold ${trade.type === "Buy" ? "text-green-400" : "text-red-400"}`}>
+                <span className={`font-bold px-3 py-1 rounded ${trade.type === "Buy" ? "bg-green-900 text-green-400" : "bg-red-900 text-red-400"}`}>
                   {trade.type}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <p>Entry: {trade.entry}</p>
-                <p>Exit: {trade.exit}</p>
-                <p>Lot: {trade.lot}</p>
-                <p className={trade.profit >= 0 ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
-                  Profit: ${trade.profit}
-                </p>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <div>
+                  <p className="text-gray-400 text-sm">Entry</p>
+                  <p className="font-semibold">{trade.entry}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400 text-sm">Exit</p>
+                  <p className="font-semibold">{trade.exit}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400 text-sm">Lot Size</p>
+                  <p className="font-semibold">{trade.lot}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400 text-sm">Profit/Loss</p>
+                  <p className={`font-bold ${trade.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    ${trade.profit}
+                  </p>
+                </div>
               </div>
-              {trade.lesson && <p className="text-gray-300 mt-2">📝 {trade.lesson}</p>}
+              
+              {trade.tag && (
+                <div className="mb-2">
+                  <span className="bg-blue-900 text-blue-400 px-2 py-1 rounded text-sm">
+                    #{trade.tag}
+                  </span>
+                </div>
+              )}
+              
+              {trade.lesson && (
+                <div className="mt-3 p-3 bg-black rounded-lg">
+                  <p className="text-gray-400 text-sm mb-1">📝 Lesson:</p>
+                  <p className="text-gray-300">{trade.lesson}</p>
+                </div>
+              )}
+              
               {trade.screenshot && (
-                <a href={trade.screenshot} target="_blank" rel="noreferrer" className="text-blue-400 underline mt-2 inline-block">
-                  View Screenshot
-                </a>
+                <div className="mt-3">
+                  <a href={trade.screenshot} target="_blank" rel="noreferrer" className="text-blue-400 underline hover:text-blue-300">
+                    📸 View Screenshot
+                  </a>
+                </div>
               )}
             </div>
           ))
